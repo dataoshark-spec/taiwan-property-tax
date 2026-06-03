@@ -376,7 +376,7 @@
     border-color: #1A3A5C !important;  /* 對應 #1F2F2A */
   }
   .presale-dash .dash-input:focus {
-    box-shadow: 0 0 0 2px rgba(184,212,240,0.4) !important;
+    box-shadow: 0 0 0 3px rgba(184,212,240,0.6) !important;
   }
   /* 必填/選填底色 */
   .presale-dash .dash-input.req { background: #FFFEF8 !important; }    /* 沿用米黃 */
@@ -459,6 +459,9 @@
   body.is-preview .input-table input:not([readonly]):hover,
   body.is-preview .input-table input:not([readonly]):focus {
     border-color: #2C5586;
+  }
+  body.is-preview .input-table input:not([readonly]):focus {
+    box-shadow: 0 0 0 3px rgba(44,85,134,0.28);
   }
   /* card-title 左前綠塊 */
   body.is-preview .card-title::before { background: #2C5586; }
@@ -629,7 +632,7 @@
   }
   .dash-input::-webkit-outer-spin-button,
   .dash-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  .dash-input:focus { outline: none; background: #FFFEF8 !important; box-shadow: 0 0 0 2px rgba(255,213,138,0.3); }
+  .dash-input:focus { outline: none; background: #FFFEF8 !important; box-shadow: 0 0 0 3px rgba(255,213,138,0.55); }
 
   /* === 欄位類別:必填(米白底深綠邊) === */
   .dash-input.req { background: #FFFEF8 !important; }
@@ -862,6 +865,13 @@
   }
   .rate-sheet-option.selected .rate-note {
     color: #C8C7BA;
+  }
+  /* 「連續」強調字:未選中(白底)用原暗紅;選中(深綠底)改亮紅,確保對比清楚 */
+  .rate-sheet-option .rate-note-em {
+    color: #C44E4E;
+  }
+  .rate-sheet-option.selected .rate-note-em {
+    color: #FF8A8A;
   }
   .rate-sheet-option .rate-check {
     width: 20px; height: 20px;
@@ -1106,7 +1116,7 @@
   .input-table input:not([readonly]):focus {
     outline: none;
     border-color: #0F6E56;
-    box-shadow: 0 0 0 3px rgba(15,110,86,0.15);
+    box-shadow: 0 0 0 3px rgba(15,110,86,0.30);
   }
   .input-table input::placeholder { color: #BBB; opacity: 1; }
   .input-table input::-webkit-input-placeholder { color: #BBB; }
@@ -1152,12 +1162,12 @@
   }
   .lock-btn.permanent:active { transform: none; }
   .lock-btn svg { width: 14px; height: 14px; }
-  /* 鎖定時的 input 視覺 — 可解鎖欄位「本質是輸入欄位」,用實線(跟自動算的虛線區隔)
-     選擇器加 .input-table 前綴提高優先級,蓋過 input[readonly] 的虛線規則 */
+  /* 鎖定時的 input 視覺 — 鎖定 = 不能輸入,用虛線灰底(跟自動算/純顯示一致)
+     選擇器加 .input-table 前綴提高優先級,蓋過 input[readonly] 規則 */
   .lockable-wrap input.is-locked,
   .input-table .lockable-wrap input.is-locked,
   .input-table tr input.is-locked[readonly] {
-    border: 1px solid #C8C7C0 !important;
+    border: 1px dashed #C8C7C0 !important;
     background: #F0EFE9 !important;
     color: #777 !important;
     cursor: not-allowed;
@@ -1218,6 +1228,25 @@
   .input-table input[readonly]:focus {
     outline: none;
     box-shadow: none;
+  }
+
+  /* === 數字鍵盤綁定的「可輸入」欄位 ===
+     為了擋系統鍵盤我們給可輸入欄位也加了 readonly,但視覺上要看起來能輸入。
+     用 .ck-bind class 覆寫:實線白底(跟一般可輸入欄位一樣)。
+     - 鎖定中的欄位有 is-locked,不算可輸入,維持上面的虛線灰底
+     - tr.readonly 裡的 *_display 也維持虛線灰底 */
+  .input-table input[readonly].ck-bind:not(.is-locked) {
+    border: 1.5px solid #C8C7C0 !important;
+    background: #fff !important;
+    color: #1A1A1A !important;
+    cursor: pointer;
+  }
+  /* tr.readonly 內的純顯示欄位優先保留虛線灰底,不被 ck-bind 覆蓋 */
+  .input-table tr.readonly input.ck-bind {
+    border: 1px dashed #C8C7C0 !important;
+    background: #F0EFE9 !important;
+    color: #777 !important;
+    cursor: not-allowed;
   }
 
   /* 標籤左側加圖示提示 */
@@ -2489,6 +2518,138 @@
     text-align: center; font-size: 11px;
     color: #BBB; padding: 16px 12px 0; line-height: 1.7;
   }
+
+  /* ===== 自訂計算機鍵盤 ===== */
+  /* 強調色:成屋版深綠;預售版覆蓋成深藍 */
+  .calc-kb { --kb-accent: #1F2F2A; --kb-accent-soft: #2E4A40; }
+  body.is-preview .calc-kb { --kb-accent: #1A3A5C; --kb-accent-soft: #2A4E70; }
+
+  .calc-kb-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.18);
+    opacity: 0; pointer-events: none;
+    transition: opacity .2s ease;
+    z-index: 998;
+  }
+  .calc-kb-backdrop.show { opacity: 1; pointer-events: auto; }
+
+  .calc-kb {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: #F2F2EE;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
+    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    transform: translateY(110%);
+    transition: transform .26s cubic-bezier(.22,.61,.36,1);
+    z-index: 999;
+    touch-action: none;
+  }
+  .calc-kb.show { transform: translateY(0); }
+
+  .calc-kb-grip {
+    width: 38px; height: 4px; border-radius: 2px;
+    background: #C8C7C0; margin: 2px auto 8px;
+  }
+  /* 數字鍵盤作用中的欄位:模擬瀏覽器原生 :focus 樣式(因為我們把欄位 blur 掉,
+     原生 focus 觸發不到 → 用 ck-active class 手動套上一樣的 background + box-shadow) */
+  /* Dashboard 欄位:沿用 .dash-input:focus 的金黃光暈 */
+  .dash-input.ck-active {
+    background: #FFFBE8 !important;
+    box-shadow: 0 0 0 2px rgba(255,213,138,0.3);
+  }
+  /* Tab 區欄位:沿用 .input-table input:focus 的綠色光暈 */
+  .input-table input.ck-active:not([readonly].is-locked) {
+    border-color: #0F6E56 !important;
+    box-shadow: 0 0 0 3px rgba(15,110,86,0.15) !important;
+  }
+  body.is-preview .input-table input.ck-active:not([readonly].is-locked) {
+    border-color: #1A3A5C !important;
+    box-shadow: 0 0 0 3px rgba(26,58,92,0.15) !important;
+  }
+
+  .calc-kb-keys {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 56px;
+    gap: 8px;
+  }
+  .ck-key {
+    border: none; border-radius: 12px;
+    font-size: 21px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .06s ease, filter .1s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ck-key:active { transform: scale(0.92); filter: brightness(0.86); }
+  /* 按下即時回饋(pointerdown 加 .ck-pressed):比 :active 更明顯且可靠,
+     在亮白底鍵盤上也看得出「按下去」—— 縮放 + 壓暗 + 內陰影陷入感 */
+  .ck-key.ck-pressed, .ck-done.ck-pressed {
+    transform: scale(0.92);
+    filter: brightness(0.82);
+    box-shadow: inset 0 2px 7px rgba(0,0,0,0.18);
+  }
+  .ck-num { background: #FFFFFF; color: #2A2A28; }
+  .ck-fn  { background: #E4E3DD; color: #5A5953; font-size: 18px; }
+  .ck-op  { background: #EDE9E0; color: var(--ck-accent, #1F2F2A); font-size: 22px; font-weight: 700; }
+  body.is-preview .ck-op { color: #1A3A5C; }
+  .ck-swap { background: #D8E6DC; color: var(--ck-accent, #1F2F2A); font-size: 20px; }
+  body.is-preview .ck-swap { background: #D6E0EC; color: #1A3A5C; }
+
+  /* === 預設配置:運算鍵在「右欄」(第4欄)=== */
+  /* 第1列:C ⌫ ⇄ ÷ */
+  .ck-c    { grid-area: 1 / 1; }
+  .ck-bk   { grid-area: 1 / 2; }
+  .ck-swap { grid-area: 1 / 3; }
+  .ck-div  { grid-area: 1 / 4; }
+  /* 數字區(第1-3欄)*/
+  .ck-7 { grid-area: 2 / 1; } .ck-8 { grid-area: 2 / 2; } .ck-9 { grid-area: 2 / 3; }
+  .ck-4 { grid-area: 3 / 1; } .ck-5 { grid-area: 3 / 2; } .ck-6 { grid-area: 3 / 3; }
+  .ck-1 { grid-area: 4 / 1; } .ck-2 { grid-area: 4 / 2; } .ck-3 { grid-area: 4 / 3; }
+  .ck-zero { grid-area: 5 / 1 / 6 / 3; }   /* 0 跨第1-2欄 */
+  .ck-dot  { grid-area: 5 / 3; }
+  /* 運算鍵在右欄(第4欄,第2-5列)*/
+  .ck-mul { grid-area: 2 / 4; }
+  .ck-sub { grid-area: 3 / 4; }
+  .ck-add { grid-area: 4 / 4; }
+  .ck-eq  { grid-area: 5 / 4; }
+  /* 完成:跨整排(第6列)*/
+  .ck-done {
+    grid-area: 6 / 1 / 7 / 5;
+    background: var(--ck-accent, #1F2F2A);
+    color: #fff;
+    font-size: 18px; font-weight: 700;
+    border: none; border-radius: 12px;
+    height: 52px; cursor: pointer; margin-top: 2px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ck-done:active { transform: scale(0.99); filter: brightness(0.94); }
+  body.is-preview .ck-done { --ck-accent: #1A3A5C; }
+
+  /* === 切換後:運算鍵移到「左欄」(第1欄)=== */
+  .calc-kb-keys.ops-left .ck-div  { grid-area: 1 / 1; }
+  .calc-kb-keys.ops-left .ck-c    { grid-area: 1 / 3; }
+  .calc-kb-keys.ops-left .ck-bk   { grid-area: 1 / 4; }
+  .calc-kb-keys.ops-left .ck-swap { grid-area: 1 / 2; }
+  .calc-kb-keys.ops-left .ck-mul  { grid-area: 2 / 1; }
+  .calc-kb-keys.ops-left .ck-sub  { grid-area: 3 / 1; }
+  .calc-kb-keys.ops-left .ck-add  { grid-area: 4 / 1; }
+  .calc-kb-keys.ops-left .ck-eq   { grid-area: 5 / 1; }
+  /* 數字往右移到第2-4欄 */
+  .calc-kb-keys.ops-left .ck-7 { grid-area: 2 / 2; } 
+  .calc-kb-keys.ops-left .ck-8 { grid-area: 2 / 3; } 
+  .calc-kb-keys.ops-left .ck-9 { grid-area: 2 / 4; }
+  .calc-kb-keys.ops-left .ck-4 { grid-area: 3 / 2; } 
+  .calc-kb-keys.ops-left .ck-5 { grid-area: 3 / 3; } 
+  .calc-kb-keys.ops-left .ck-6 { grid-area: 3 / 4; }
+  .calc-kb-keys.ops-left .ck-1 { grid-area: 4 / 2; } 
+  .calc-kb-keys.ops-left .ck-2 { grid-area: 4 / 3; } 
+  .calc-kb-keys.ops-left .ck-3 { grid-area: 4 / 4; }
+  .calc-kb-keys.ops-left .ck-zero { grid-area: 5 / 2 / 6 / 4; }  /* 0 跨第2-3欄 */
+  .calc-kb-keys.ops-left .ck-dot  { grid-area: 5 / 4; }
+
+
+  /* 使用計算機鍵盤的欄位:被點選時的視覺(沿用 focus 樣式即可,不另設) */
 </style>
 </head>
 <body>
@@ -2556,6 +2717,35 @@
 </div>
 
 <div class="toast" id="toast">已清空,可以開始輸入</div>
+
+<!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
+<div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
+<div class="calc-kb" id="calcKb">
+  <div class="calc-kb-grip"></div>
+  <div class="calc-kb-keys" id="calcKbKeys">
+    <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
+    <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
+    <button type="button" class="ck-key ck-fn ck-swap" data-k="swap" title="運算鍵左右切換">⇄</button>
+    <button type="button" class="ck-key ck-op ck-div" data-k="/">÷</button>
+    <button type="button" class="ck-key ck-num ck-7" data-k="7">7</button>
+    <button type="button" class="ck-key ck-num ck-8" data-k="8">8</button>
+    <button type="button" class="ck-key ck-num ck-9" data-k="9">9</button>
+    <button type="button" class="ck-key ck-op ck-mul" data-k="*">×</button>
+    <button type="button" class="ck-key ck-num ck-4" data-k="4">4</button>
+    <button type="button" class="ck-key ck-num ck-5" data-k="5">5</button>
+    <button type="button" class="ck-key ck-num ck-6" data-k="6">6</button>
+    <button type="button" class="ck-key ck-op ck-sub" data-k="-">−</button>
+    <button type="button" class="ck-key ck-num ck-1" data-k="1">1</button>
+    <button type="button" class="ck-key ck-num ck-2" data-k="2">2</button>
+    <button type="button" class="ck-key ck-num ck-3" data-k="3">3</button>
+    <button type="button" class="ck-key ck-op ck-add" data-k="+">+</button>
+    <button type="button" class="ck-key ck-num ck-zero" data-k="0">0</button>
+    <button type="button" class="ck-key ck-num ck-dot" data-k=".">.</button>
+    <button type="button" class="ck-key ck-fn ck-eq" data-k="=">=</button>
+    <button type="button" class="ck-done" data-k="done">完成</button>
+  </div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -3026,7 +3216,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    v1.4 ( 含預售版 )
+    1150603A ( 含預售版 )
   </div>
 </div>
 
@@ -3068,7 +3258,7 @@
       <div>
         <div class="rate-num">10%</div>
         <div class="rate-desc">自住滿 6 年(獲利 400 萬內免稅)</div>
-        <div class="rate-note">需 <span style="color:#C44E4E;">連續</span> 設籍滿 6 年、未出租營業、6 年內未用過此優惠</div>
+        <div class="rate-note">需 <span class="rate-note-em">連續</span> 設籍滿 6 年、未出租營業、6 年內未用過此優惠</div>
       </div>
       <div class="rate-check"></div>
     </div>
@@ -3633,7 +3823,11 @@ function renderFlow(d) {
   const html = `
     <div class="flow-stack">
       <div class="flow-group">
-        <div class="flow-group-title">① 免稅額／出售可列舉額</div>
+        <div class="flow-group-title">① 仲介費</div>
+        <div class="flow-line">${line2}</div>
+      </div>
+      <div class="flow-group">
+        <div class="flow-group-title">② 免稅額／出售可列舉額</div>
         <div class="flow-group-desc">
           若無法列舉成本時，免稅額為 <b>出售價格的 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。
         </div>
@@ -3643,10 +3837,6 @@ function renderFlow(d) {
         <div class="flow-group-desc">
           若有列舉出實際成本與費用（如：仲介費、裝潢費、履保、代書費⋯），其加總金額若高於法定減除費用（成交價 3％，上限 30 萬），則可 <b>擇優（從高）認列</b> 。
         </div>
-      </div>
-      <div class="flow-group">
-        <div class="flow-group-title">② 仲介費</div>
-        <div class="flow-line">${line2}</div>
       </div>
       <div class="flow-group">
         <div class="flow-group-title">③ 房地合一稅</div>
@@ -3699,7 +3889,7 @@ function renderPartyTables(d) {
   const buyerLoan = d.sale * d.buyerLoanRate;
   const buyerSelf = d.sale - buyerLoan;
   const buyerTotal = d.sale + d.buyerFee;
-  const buyerRatePct = (d.buyerRate * 100).toFixed(1);
+  const buyerRatePct = (d.sale > 0 ? (d.buyerFee / d.sale) * 100 : 0).toFixed(1);
   const loanRatePct = (d.buyerLoanRate * 100).toFixed(0);
 
   const buyerHtml = `
@@ -4084,6 +4274,33 @@ document.querySelectorAll('.party-tab').forEach(tab => {
   });
 });
 
+// === 三方明細(買方/賣方/仲介)左右滑動翻頁 ===
+(function setupPartySwipe(){
+  const wrap = document.getElementById('partySection');
+  if (!wrap) return;
+  const order = ['buyer','seller','agent'];
+  let x0 = 0, y0 = 0, tracking = false;
+  wrap.addEventListener('touchstart', e => {
+    // 起點在可輸入欄位上 → 不偵測滑動(避免改數字時誤觸翻頁)
+    if (e.target.closest('input, .pt-input, button')) { tracking = false; return; }
+    if (e.touches.length !== 1) { tracking = false; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; tracking = true;
+  }, { passive: true });
+  wrap.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const btns = order.map(p => document.querySelector('.party-tab[data-party="' + p + '"]'));
+    let cur = btns.findIndex(b => b && b.classList.contains('active'));
+    if (cur < 0) cur = 0;
+    let next = cur + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= btns.length) return;
+    if (btns[next]) btns[next].click();
+  }, { passive: true });
+})();
+
 FIELDS.forEach(id => {
   const el = $(id);
   if (!el) return;
@@ -4224,6 +4441,36 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     }
   });
 });
+
+// === 內容區左右滑動翻頁(成屋 3 頁:sell/buy/other)===
+// 做法:偵測到水平滑動 → 模擬點對應的 tab 按鈕(沿用上面的 click 切換邏輯)
+(function setupTabSwipe(panelsId, btnSelector, order){
+  const panels = document.getElementById(panelsId);
+  if (!panels) return;
+  let x0 = 0, y0 = 0, tracking = false;
+  panels.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    x0 = e.touches[0].clientX;
+    y0 = e.touches[0].clientY;
+    tracking = true;
+  }, { passive: true });
+  panels.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0;
+    const dy = t.clientY - y0;
+    // 必須是「明顯水平」滑動(水平位移 > 50,且水平 > 垂直,避免跟上下捲動打架)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    // 找目前是哪一頁
+    const btns = order.map(tab => document.querySelector(btnSelector.replace('{tab}', tab)));
+    let cur = btns.findIndex(b => b && b.classList.contains('active'));
+    if (cur < 0) cur = 0;
+    let next = cur + (dx < 0 ? 1 : -1);   // 左滑→下一頁、右滑→上一頁
+    if (next < 0 || next >= btns.length) return;   // 到頭/到尾不動
+    if (btns[next]) btns[next].click();
+  }, { passive: true });
+})('tabPanels', '.tab-btn[data-tab="{tab}"]', ['sell','buy','other']);
 
 // === 自訂級距選單(取代醜醜的系統 select)===
 // 成屋 / 預售 共用同一個彈窗;依當前版本決定操作哪個 select、是否顯示 10% 選項
@@ -4466,7 +4713,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const html = `
       <div class="flow-stack">
         <div class="flow-group">
-          <div class="flow-group-title">① 免稅額／出售可列舉額</div>
+          <div class="flow-group-title">① 仲介費</div>
+          <div class="flow-line">${line2}</div>
+        </div>
+        <div class="flow-group">
+          <div class="flow-group-title">② 免稅額／出售可列舉額</div>
           <div class="flow-group-desc">
             若無法列舉成本時，免稅額為 <b>（成交價－第一手價格＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。
           </div>
@@ -4477,10 +4728,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           <div class="flow-group-desc">
             若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－第一手價格＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇優（從高）認列</b> 。
           </div>
-        </div>
-        <div class="flow-group">
-          <div class="flow-group-title">② 仲介費</div>
-          <div class="flow-line">${line2}</div>
         </div>
         <div class="flow-group">
           <div class="flow-group-title">③ 房地合一稅</div>
@@ -5074,6 +5321,31 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
     }
   });
 });
+
+// === 預售版內容區左右滑動翻頁(2 頁:psell/pbuy)===
+(function setupPresaleSwipe(){
+  const panels = document.getElementById('pTabPanels');
+  if (!panels) return;
+  const order = ['psell','pbuy'];
+  let x0 = 0, y0 = 0, tracking = false;
+  panels.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; tracking = true;
+  }, { passive: true });
+  panels.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const btns = order.map(tab => document.querySelector('.tab-btn[data-ptab="' + tab + '"]'));
+    let cur = btns.findIndex(b => b && b.classList.contains('active'));
+    if (cur < 0) cur = 0;
+    let next = cur + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= btns.length) return;
+    if (btns[next]) btns[next].click();
+  }, { passive: true });
+})();
 // 預售版收合按鈕
 (function() {
   const cb = document.getElementById('pCollapseBtn');
@@ -5473,6 +5745,302 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }).catch(() => {});
   });
 }
+
+/* ===== 自訂計算機鍵盤 ===== */
+(function(){
+  const kb       = document.getElementById('calcKb');
+  const backdrop = document.getElementById('calcKbBackdrop');
+  if (!kb || !backdrop) return;
+
+  // 計算機綁定的欄位
+  const READY_FIELDS = ['d_sale','d_buy','d_buyer_rate','d_buyer_fixed','d_target','d_seller_rate'];
+  const ALL_FIELDS = READY_FIELDS.slice();
+
+  let targetInput = null;   // 目前編輯的欄位
+  let expr = '';            // 目前輸入的數字字串
+
+  // 安全求值:只允許數字、小數點、+ - * / % 與括號
+  function evalExpr(s){
+    if (!s) return null;
+    let t = s.replace(/[+\-*/%.]+$/,'');
+    if (t === '' || t === '-') return null;
+    if (!/^[-+*/%.\d()]+$/.test(t)) return null;
+    try {
+      t = t.replace(/(\d+(?:\.\d+)?)%/g, '($1/100)');
+      const v = Function('"use strict";return (' + t + ')')();
+      return (typeof v === 'number' && isFinite(v)) ? v : null;
+    } catch(e){ return null; }
+  }
+  function fmtNum(v){
+    if (v === null || v === undefined) return '';
+    return (Math.round(v * 10000) / 10000).toString();
+  }
+
+  // 把目前 expr 即時顯示在「欄位本身」(欄位就是計算機螢幕)
+  function refreshField(){
+    if (!targetInput) return;
+    targetInput.value = expr;
+  }
+
+  // 把指定欄位捲動到鍵盤上方的可視區(避免被鍵盤遮住)
+  function scrollIntoView(el){
+    if (!el) return;
+    // 等鍵盤動畫展開後再量,確保 kb.offsetHeight 正確
+    setTimeout(() => {
+      const kbH = kb.offsetHeight || 360;
+      const visibleTop = 70;                          // 上方保留一點空間
+      const visibleBottom = window.innerHeight - kbH; // 鍵盤上緣
+      const r = el.getBoundingClientRect();
+      // 欄位若被鍵盤遮到、或太靠上,捲動讓它停在可視區中段
+      if (r.bottom > visibleBottom - 12 || r.top < visibleTop){
+        const target = (visibleBottom + visibleTop) / 2 - r.height / 2;
+        window.scrollBy({ top: r.top - target, behavior: 'smooth' });
+      }
+    }, 60);
+  }
+
+  function openKb(input){
+    // 先關掉前一格的高亮
+    document.querySelectorAll('.dash-input.ck-active')
+      .forEach(el => el.classList.remove('ck-active'));
+    targetInput = input;
+    // 記住原本的 type 與原值(若使用者沒輸入就關閉,要還原原值)
+    if (!input.dataset.ckOrigType) input.dataset.ckOrigType = input.type || 'text';
+    input.dataset.ckOrigValue = input.value || '';
+    // 一律以空白起始 — 使用者點欄位的意圖就是改值,留舊值會疊上去
+    expr = '';
+    // 編輯期間切成 text 才能顯示輸入過程
+    input.type = 'text';
+    input.value = '';
+    input.classList.add('ck-active');
+    backdrop.classList.add('show');
+    kb.classList.add('show');
+    scrollIntoView(input);
+  }
+
+  // 把目前 expr 算好寫回欄位,並觸發計算流程
+  function commitToField(){
+    if (!targetInput) return;
+    let finalVal;
+    if (expr.trim() === '') {
+      // 沒輸入任何東西 → 還原原值(使用者只是點進來看,不該被清空)
+      finalVal = targetInput.dataset.ckOrigValue || '';
+    } else {
+      const v = evalExpr(expr);
+      finalVal = (v !== null) ? fmtNum(v) : '';
+    }
+    // 還原欄位原本的 type
+    const origType = targetInput.dataset.ckOrigType || 'number';
+    targetInput.type = origType;
+    targetInput.value = finalVal;
+    targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function closeKb(){
+    commitToField();
+    if (targetInput) targetInput.classList.remove('ck-active');
+    backdrop.classList.remove('show');
+    kb.classList.remove('show');
+    targetInput = null;
+    expr = '';
+  }
+
+  // 按鍵處理
+  function pressKey(k){
+    if (k === '' || k == null) return;
+    if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換
+    if (k === 'C'){ expr = ''; }
+    else if (k === 'back'){ expr = expr.slice(0, -1); }
+    else if (k === '='){
+      const v = evalExpr(expr);
+      if (v !== null) expr = fmtNum(v);
+    }
+    else if (k === 'done'){
+      closeKb();
+      return;
+    }
+    else if (k === '.'){
+      if (!expr.includes('.')) expr += (expr === '' ? '0.' : '.');
+    }
+    else if (k === '+' || k === '-' || k === '*' || k === '/'){
+      // 運算符:開頭不能放(除了負號)、避免連續兩個運算符
+      if (expr === '' && k !== '-') return;
+      if (/[+\-*/]$/.test(expr)) expr = expr.slice(0, -1);  // 換掉前一個運算符
+      expr += k;
+    }
+    else { expr += k; }   // 數字 0-9
+    refreshField();
+  }
+
+  // 運算鍵左右切換(記住偏好)
+  function toggleOps(){
+    const keys = document.getElementById('calcKbKeys');
+    if (!keys) return;
+    const nowLeft = keys.classList.toggle('ops-left');
+    try { localStorage.setItem('fwTax_kbOpsLeft', nowLeft ? '1' : '0'); } catch(e){}
+  }
+  // 啟動時套用記住的偏好
+  (function applyOpsPref(){
+    try {
+      const keys = document.getElementById('calcKbKeys');
+      if (keys && localStorage.getItem('fwTax_kbOpsLeft') === '1') {
+        keys.classList.add('ops-left');
+      }
+    } catch(e){}
+  })();
+
+  kb.querySelectorAll('.ck-key').forEach(btn => {
+    btn.addEventListener('click', () => pressKey(btn.dataset.k));
+  });
+  // 完成按鈕(class 是 ck-done,不在 .ck-key 內)
+  const doneBtn = kb.querySelector('.ck-done');
+  if (doneBtn) doneBtn.addEventListener('click', () => pressKey('done'));
+
+  // === 鍵盤按鍵:按下瞬間的即時回饋(視覺按下態 + 輕震 8ms)===
+  // 這是 App 自繪鍵盤,沒有系統按鍵音/震動,故由此補上「按到了」的回饋。
+  // 用 pointerdown 在按下當下即時觸發(比 click 早、比 :active 可靠);震動 iOS 自動略過。
+  const kbKeysEl = document.getElementById('calcKbKeys');
+  if (kbKeysEl) {
+    kbKeysEl.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.ck-key, .ck-done');
+      if (!btn) return;
+      btn.classList.add('ck-pressed');
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch(_){}
+    });
+    const clearPressed = () => kbKeysEl.querySelectorAll('.ck-pressed')
+      .forEach(b => b.classList.remove('ck-pressed'));
+    kbKeysEl.addEventListener('pointerup', clearPressed);
+    kbKeysEl.addEventListener('pointercancel', clearPressed);
+    kbKeysEl.addEventListener('pointerleave', clearPressed);
+  }
+  backdrop.addEventListener('click', closeKb);
+
+  // 滑動退出:左滑 / 右滑 / 下滑都關閉
+  let touchX = 0, touchY = 0;
+  kb.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }, { passive: true });
+  kb.addEventListener('touchend', e => {
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchX;
+    const dy = t.clientY - touchY;
+    const TH = 55;
+    if (Math.abs(dx) > TH || dy > TH) closeKb();
+  }, { passive: true });
+
+  // === 綁定欄位 ===
+  // 成屋版 dashboard
+  const READY_DASH = ['d_sale','d_buy','d_buyer_rate','d_buyer_fixed','d_target','d_seller_rate'];
+  // 預售版 dashboard
+  const PRESALE_DASH = ['p_sale','p_buy','p_first_price','p_paid','p_unpaid',
+                        'p_buyer_rate','p_buyer_fixed','p_target','p_seller_rate'];
+  // 成屋版 Tab 區可輸入欄位
+  const READY_TAB = [
+    'ap_s_landtax','ap_s_sign','ap_s_log','ap_s_bank',
+    'ap_c_nonded','ap_c_tax','ap_c_stamp','ap_c_fee','ap_c_daishu',
+    'ap_c_escrow_inv','ap_c_lawpay','ap_c_utility','ap_c_decor',
+    'ap_c_agent','ap_c_misc','ap_c_nonded2',
+    'ap_o_landgain'
+    // 注意:ap_o_selfuse(持有六年自用免稅)由系統依稅率自動帶入,使用者不該輸入
+  ];
+  // 預售版 Tab 區可輸入欄位
+  const PRESALE_TAB = [
+    'pp_s_daishu','pp_s_ad','pp_s_other','pp_s_nonded',
+    'pp_c_daishu','pp_c_agent','pp_c_escrow_inv','pp_c_swap_inv',
+    'pp_c_other','pp_c_misc','pp_c_nonded'
+  ];
+  // 純顯示欄位(由其它欄位帶入,不綁鍵盤)
+  const DISPLAY_ONLY = new Set([
+    'ap_s_escrow_display','ap_c_purchase_display',
+    'pp_s_swap_display','pp_s_escrow_display','pp_c_purchase_display',
+    'ap_o_selfuse'   // 持有六年自用免稅:由稅率自動帶入(10% 時 400 萬,其它為 0)
+  ]);
+
+  const ALL_BIND_IDS = [...READY_DASH, ...PRESALE_DASH, ...READY_TAB, ...PRESALE_TAB];
+
+  // 動態生成的欄位(在仲介明細卡裡,JS 重建 innerHTML 才出現)
+  // 用 MutationObserver 監聽 DOM 變化,新出現的目標欄位自動補綁
+  const DYNAMIC_FIELD_IDS = new Set([
+    'pt_loan_rate', 'pt_agent_other',           // 成屋版
+    'p_pt_agent_other'                          // 預售版
+  ]);
+
+  // 判斷某欄位是否能開鍵盤
+  function canOpenKb(el){
+    if (!el) return false;
+    if (DISPLAY_ONLY.has(el.id)) return false;     // 純顯示欄位
+    if (el.classList.contains('is-locked')) return false;  // 鎖定中
+    return true;
+  }
+
+  // 共用的「綁欄位」邏輯(設 inputmode、cursor、focus→blur、click)
+  function bindFieldForKb(el){
+    if (!el || el.dataset.ckBound === '1') return;   // 防重複綁定
+    el.dataset.ckBound = '1';
+    el.classList.add('ck-bind');               // 標記為「計算機可輸入」→ CSS 顯示實線白底
+    el.setAttribute('inputmode', 'none');
+    if (!el.classList.contains('is-locked')) {
+      el.setAttribute('readonly', '');
+    }
+    el.style.cursor = 'pointer';
+    el.addEventListener('focus', e => { e.target.blur(); });
+    el.addEventListener('click', () => {
+      if (canOpenKb(el)) openKb(el);
+    });
+  }
+
+  // 對固定 ID 的欄位先綁
+  ALL_BIND_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) bindFieldForKb(el);
+  });
+
+  // 對動態欄位:每次 DOM 變化掃描一次,新出現就綁
+  function scanDynamicFields(){
+    DYNAMIC_FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.dataset.ckBound !== '1') bindFieldForKb(el);
+    });
+  }
+  scanDynamicFields();  // 初始掃一次
+  // 監聽 body 整體 DOM 變化(仲介卡 innerHTML 重寫會觸發)
+  const mo = new MutationObserver(() => scanDynamicFields());
+  mo.observe(document.body, { childList: true, subtree: true });
+
+  // 解鎖時的協同:鎖頭按鈕點擊「解鎖」後,讓計算機鍵盤直接開起來
+  document.querySelectorAll('.lock-btn[data-lock-target]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // 延後一拍,等鎖頭原本的事件先跑完(它會把 readonly / is-locked 拿掉,並 focus)
+      setTimeout(() => {
+        const target = document.getElementById(btn.dataset.lockTarget);
+        if (!target) return;
+        if (btn.dataset.locked === 'false'){
+          // 解鎖後,把 readonly 加回來擋系統鍵盤(JS 寫值不受 readonly 影響)
+          target.setAttribute('readonly', '');
+          // 解鎖意圖就是要改值 → 先清空,讓使用者直接打新值
+          target.value = '';
+          if (canOpenKb(target)) openKb(target);
+        }
+      }, 80);
+    });
+  });
+})();
+
+// === 觸覺回饋:動作按鈕輕震(10ms) ===
+// Android Chrome / 安裝為 PWA 有效;iOS 無 Vibration API,feature detection 後自動略過、不報錯。
+// 僅綁在使用者實際點擊的動作上(滿足 Chrome user-activation 規則);數字鍵輸入不震,交給系統鍵盤自身回饋。
+(function(){
+  function hapticTap(){ try { if (navigator.vibrate) navigator.vibrate(10); } catch(e){} }
+  var HAPTIC_SEL = '.ver-btn, .party-tab, .rate-sheet-option, .lock-btn, .legend-lock, .collapse-section-header, .clear-btn, .restore-btn';
+  document.addEventListener('click', function(e){
+    var t = e.target.closest ? e.target.closest(HAPTIC_SEL) : null;
+    if (t) hapticTap();
+  }, true);
+})();
+
 
 </script>
 </body>
