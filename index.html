@@ -3216,7 +3216,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150604H
+    1150623A
   </div>
 </div>
 
@@ -4606,7 +4606,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const line1a = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('−')}
-      ${cell('第一手價', fmtN(d.firstPrice), 'input')}
+      ${cell('屋主取得房屋價', fmtN(d.buy), 'input')}
       ${op('+')}
       ${cell('已付款', fmtN(d.paid), 'input')}
       ${opTrailing('=')}
@@ -4719,14 +4719,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         <div class="flow-group">
           <div class="flow-group-title">② 免稅額／出售可列舉額</div>
           <div class="flow-group-desc">
-            若無法列舉成本時，免稅額為 <b>（成交價－第一手價格＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。
+            若無法列舉成本時，免稅額為 <b>（成交價－屋主取得房屋價＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。
           </div>
           <div class="flow-line">${line1a}</div>
           <div class="flow-line">${line1b}</div>
           <div class="flow-line">${line1c}</div>
           <div class="flow-line">${line3}</div>
           <div class="flow-group-desc">
-            若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－第一手價格＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇優（從高）認列</b> 。
+            若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－屋主取得房屋價＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇優（從高）認列</b> 。
           </div>
         </div>
         <div class="flow-group">
@@ -4824,7 +4824,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           <div class="pg-row">
             <div class="pg-op"></div>
             <div class="pg-label">換約款 ( 給屋主 )</div>
-            <div class="pg-value">${fmtW2(d.swapDiff)}</div>
+            <div class="pg-value">${fmtW2(d.ownerSwap)}</div>
             <div class="pg-unit">萬</div>
           </div>
           <div class="pg-row">
@@ -5033,7 +5033,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Tab 1:出售時成本 — Excel T21~T25
     const fee_swap = firstPrice / 1000;                     // T21 換約費 = 第一手價 × 千分之一
     const fee_daishu = n('pp_s_daishu');                     // T22 代書費(空白時 n() 依 data-default=3000 帶入;填 0 即為 0)
-    const fee_escrow = (sale - firstPrice + paid) * 3 / 10000; // T23 履保 = (售-一手+已付) × 3/10000
+    const fee_escrow = (Math.max(0, sale - firstPrice) + paid) * 3 / 10000; // T23 履保 = (MAX(0,售-一手)+已付) × 3/10000，賠售歸零
     const fee_ad = n('pp_s_ad');                             // T24 廣告費
     const fee_other = n('pp_s_other');                       // T25 其它
     const sellMisc = fee_swap + fee_daishu + fee_escrow + fee_ad + fee_other; // T26
@@ -5054,8 +5054,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     //   AG20 = (B16-O26+H16)*10000 = 換約價差(元)
     //   AI20 = AG20 * 3%
     //   AI18 = MIN(30萬, AI20)
-    const swapDiff = sale - firstPrice + paid;
+    const swapDiff = Math.max(0, sale - buy) + paid; // 免稅額：MAX(0,售-屋主取得價)+已付，賠售歸零（對應 Excel AG20 用 E16）
     const exempt3pct = Math.min(300000, swapDiff * 0.03);
+    const ownerSwap = sale - firstPrice + paid; // 換約款給屋主：成交-第一手+已付（對應 Excel AG25 用 O26，無歸零）
 
     // 出售可列舉 - Excel AG27:IF(免稅額<雜項+仲介, 雜項+仲介, 免稅額)
     const sellDeductible = Math.max(exempt3pct, sellTotalWithAgent);
@@ -5178,7 +5179,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // === 公式流程 + 三方明細(只在預售模式才渲染進共用收合區)===
     if (document.body.classList.contains('is-preview')) {
       const d = {
-        sale, buy, paid, unpaid, firstPrice, swapDiff,
+        sale, buy, paid, unpaid, firstPrice, swapDiff, ownerSwap,
         exempt3pct, sellMisc, sellerAgentFee, sellTotalWithAgent, sellDeductible,
         buyTaxFee, taxBase, taxBaseRaw, tax, rate,
         profitBase, targetProfit, rebate, profit,
