@@ -382,6 +382,40 @@
   .presale-dash .dash-input.req { background: #FFFEF8 !important; }    /* 沿用米黃 */
   .presale-dash .dash-input.req:focus { background: #F0F6FC !important; }
   .presale-dash .dash-input.opt { background: #E8EEF4 !important; }    /* 對應成屋 opt 淡綠 → 淡藍 */
+
+  /* 禁止負數:輸入負號時輸入欄閃紅框+輕微抖動 */
+  input.neg-blocked {
+    outline: 2px solid #FF6B6B !important;
+    outline-offset: -1px !important;
+    animation: negShake 0.25s ease;
+  }
+  @keyframes negShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+  }
+  /* 不可輸入負數 提示 toast */
+  .neg-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 84px;
+    transform: translateX(-50%) translateY(10px);
+    background: #C44E4E;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 20px;
+    border-radius: 22px;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 9999;
+  }
+  .neg-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
   .presale-dash #p_target:focus { background: #F0F6FC !important; }
@@ -1781,6 +1815,37 @@
     border-color: #C9B5DC;
   }
   .flow-cell.rate .flow-cell-v { color: #6B3FA0; }
+  /* 做法A:售價低於屋主取得時,①第一排「出售價格−屋主取得房屋價」兩格換成藍底提示 */
+  .flow-cell.flow-hint-cell {
+    flex: 3.9 1 0;
+    margin-left: 26px;
+    margin-right: 8px;
+    background: #1A3A5C !important;
+    border-color: #1A3A5C !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 5px 10px !important;
+    overflow: visible !important;
+    box-shadow: 0 1px 3px rgba(26,58,92,0.18) !important;
+  }
+  .flow-hint-l1 {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #FFE5A8 !important;
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+  .flow-hint-l2 {
+    font-size: 9px;
+    font-weight: 600;
+    color: #FFFFFF !important;
+    line-height: 1.25;
+    white-space: nowrap;
+    margin-top: 1px;
+  }
 
   /* 4 個流程列的容器 */
   .flow-stack {
@@ -1834,8 +1899,14 @@
   }
   /* result 塊吃更多空間(它一定裝大數字) */
   .flow-cell.result { flex: 1.4 1 0 !important; }
+  /* 每排最右邊的結果框(藍色)統一固定寬度,讓①②③④⑥的結果框與=號左右對齊 */
+  .flow-cell.result:last-child { flex: 0 0 130px !important; }
   /* rate 格放小數字(35%, 3%, 4.0%),拿少一點 */
   .flow-cell.rate { flex: 0.7 1 0 !important; }
+  /* 預售第二排免稅比率:回到 flex 1,讓免稅額結果格對齊第3、4排 */
+  .flow-cell.rate.ratecol { flex: 1 1 0 !important; }
+  /* 賠售提示排:已付款縮窄靠右,減少空白 */
+  .flow-cell.input.paidcol { flex: 0.8 1 0 !important; }
 
   /* 標籤:小、灰、上方 */
   .flow-cell-l {
@@ -1895,8 +1966,8 @@
      不搶戲:淺底、深綠字、細邊框、無陰影 */
   .flow-cell.result.result-soft {
     background: #EEF2EF !important;
-    border: 1px solid #C5D2CB !important;
-    box-shadow: none !important;
+    border: none !important;
+    box-shadow: inset 0 0 0 1px #C5D2CB !important;
   }
   .flow-cell.result.result-soft .flow-cell-l {
     color: #8A8980 !important;
@@ -1908,7 +1979,7 @@
   /* 預售版 result-soft 配色(藍系) */
   body.is-preview .flow-cell.result.result-soft {
     background: #EEF2F7 !important;
-    border-color: #C5D2DE !important;
+    box-shadow: inset 0 0 0 1px #C5D2DE !important;
   }
   body.is-preview .flow-cell.result.result-soft .flow-cell-v {
     color: #4A6080 !important;
@@ -1931,6 +2002,11 @@
   .flow-op:has(+ .flow-cell.result) {
     color: #1F3A32 !important;
     font-weight: 600 !important;
+  }
+  /* 中段運算子(×／取低／擇高)統一寬度,讓第2、3、4排的「=」與結果格左右對齊 */
+  .flow-op.act {
+    min-width: 34px !important;
+    font-size: 14px !important;
   }
   /* 行尾懸掛運算子(尚未結束) */
   .flow-op.trailing {
@@ -3216,7 +3292,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623J
+    1150623W
   </div>
 </div>
 
@@ -3576,10 +3652,11 @@ function autoFitFlowNumbers() {
     const text = el.textContent || '';
     if (!text.trim()) return;
 
-    // 該 cell 的基準字級:result 是 13.5,其他 13
+    // 該 cell 的基準字級:result 是 13.5,其他 13;但④稅後利潤(profit-result)用 13,跟同排其他格一致
     const parent = el.closest('.flow-cell');
     const isResult = parent && parent.classList.contains('result');
-    const baseSize = isResult ? 13.5 : 13;
+    const isProfitResult = parent && parent.classList.contains('profit-result');
+    const baseSize = (isResult && !isProfitResult) ? 13.5 : 13;
 
     const cs = getComputedStyle(el);
     mirror.style.fontFamily = cs.fontFamily;
@@ -4323,6 +4400,33 @@ document.addEventListener('input', (e) => {
     }
   }
 });
+// === 禁止輸入負數(屋主目標稅後利潤 d_target / p_target 除外)===
+// 用 capture 階段,在 calc/calcPresale 重算前先擋掉負號;涵蓋靜態與動態生成(三方明細)的輸入欄
+document.addEventListener('input', function(e) {
+  const el = e.target;
+  if (!el || el.tagName !== 'INPUT') return;
+  // 數值輸入欄:type=number,或三方明細的 pt-input(type=text 但只收數字)
+  const isNumField = el.type === 'number' || (el.classList && el.classList.contains('pt-input'));
+  if (!isNumField) return;
+  if (el.id === 'd_target' || el.id === 'p_target') return; // 目標稅後利潤允許負數
+  if (el.value.indexOf('-') !== -1) {
+    el.value = '';
+    el.classList.add('neg-blocked');
+    clearTimeout(el.__negTimer);
+    el.__negTimer = setTimeout(() => el.classList.remove('neg-blocked'), 1200);
+    let toast = document.getElementById('negToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'negToast';
+      toast.className = 'neg-toast';
+      toast.textContent = '不可輸入負數';
+      document.body.appendChild(toast);
+    }
+    toast.classList.add('show');
+    clearTimeout(window.__negToastTimer);
+    window.__negToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  }
+}, true);
 // 點擊時自動全選(只在真正使用者點擊時觸發,不會在重建還原 focus 時觸發)
 document.addEventListener('mouseup', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('pt-input')) {
@@ -4415,6 +4519,8 @@ if (!_hadSavedState) {
 
 // 點選任何 number 輸入欄位時,自動全選 → 可以直接打字覆蓋
 document.querySelectorAll('input[type="number"]').forEach(el => {
+  // 禁止負數:目標稅後利潤(d_target/p_target)除外,設 min=0 作為輔助
+  if (el.id !== 'd_target' && el.id !== 'p_target') el.setAttribute('min', '0');
   if (el.readOnly) return;
   el.addEventListener('focus', function() {
     setTimeout(() => this.select(), 0);
@@ -4603,7 +4709,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // ① 預售免稅額 = MIN(30萬, 換約價差×3%)
     // 比照成屋版:先算 3% 原始值,再攤開「取小 30萬上限」的封頂過程
     const exemptRaw3 = d.swapDiff * 0.03;     // 換約價差×3%(原始,未封頂)
-    const line1a = `
+    // 做法A:出售價格 < 屋主取得房屋價 時,前兩格(出售價格−屋主取得)換成藍底提示,保留 ＋已付款 ＝換約價差
+    const sellBelowBuy = d.sale < d.buy;
+    const line1a = sellBelowBuy ? `
+      <div class="flow-cell flow-hint-cell"><div class="flow-hint-l1">出售價格低於屋主取得房屋價</div><div class="flow-hint-l2">此差額自動歸零</div></div>
+      ${op('+')}
+      ${cell('已付款', fmtN(d.paid), 'input paidcol')}
+      ${opTrailing('=')}
+    ` : `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('−')}
       ${cell('屋主取得房屋價', fmtN(d.buy), 'input')}
@@ -4613,14 +4726,14 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     `;
     const line1b = `
       ${cell('換約價差', fmtN(d.swapDiff))}
-      ${op('×')}
-      ${cell('免稅比率', '3%', 'rate')}
+      <div class="flow-op act">×</div>
+      ${cell('免稅比率', '3%', 'rate ratecol')}
       ${op('=')}
-      ${cell('免稅額', fmtN(exemptRaw3), 'result result-soft')}
+      ${cell('免稅額', fmtN(exemptRaw3), 'result')}
     `;
     const line1c = `
       ${cell('免稅額', fmtN(exemptRaw3))}
-      ${op('取低')}
+      <div class="flow-op act">取低</div>
       ${cell('法定無列舉上限', fmtN(300000))}
       ${op('=')}
       ${cell('無列舉上限', fmtN(d.exempt3pct), 'result')}
@@ -4638,7 +4751,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // ③ 出售可列舉 = MAX(免稅額, 雜項+仲介費)
     const line3 = `
       ${cell('無列舉上限', fmtN(d.exempt3pct))}
-      ${op('擇高')}
+      <div class="flow-op act">擇高</div>
       ${cell('出售雜項+仲介費', fmtN(d.sellTotalWithAgent))}
       ${op('=')}
       ${cell('實際認列額', fmtN(d.sellDeductible), 'result')}
@@ -4673,25 +4786,27 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       ${cell('應繳房地合一稅', pTaxCellVal, 'result' + (pNoTax ? ' loss' : ''))}
     `;
 
-    // ⑤ 屋主利潤(原利潤,未加仲退)
+    // ⑤ 屋主利潤(原利潤,未加仲退)— 分三排,避免單排過擠
     const line5a = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('−')}
       ${cell('購屋價格', fmtN(d.buy), 'input')}
       ${op('−')}
       ${cell('房地合一稅', fmtN(d.tax))}
-      ${op('−')}
-      ${cell('出售仲介費', fmtN(d.sellerAgentFee))}
       ${opTrailing('−')}
     `;
     const line5b = `
-      ${cell('出售雜支', fmtN(d.sellMisc))}
+      ${cell('出售仲介費', fmtN(d.sellerAgentFee))}
       ${op('−')}
+      ${cell('出售雜支', fmtN(d.sellMisc))}
+      ${opTrailing('−')}
+    `;
+    const line5c = `
       ${cell('取得稅費', fmtN(d.buyTaxFee))}
       ${op('−')}
       ${cell('不可抵扣', fmtN(d.nonDeductible))}
       ${op('=')}
-      ${cell('稅後利潤', fmtN(d.profitBase), 'result' + (d.profitBase < 0 ? ' neg' : ''))}
+      ${cell('稅後利潤', fmtN(d.profitBase), 'result profit-result' + (d.profitBase < 0 ? ' neg' : ''))}
     `;
 
     // ⑥ 目標利潤反推仲退
@@ -4719,14 +4834,15 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         <div class="flow-group">
           <div class="flow-group-title">② 免稅額／出售可列舉額</div>
           <div class="flow-group-desc">
-            若無法列舉成本時，免稅額為 <b>（成交價－屋主取得房屋價＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。
+            若無法列舉成本時，免稅額為 <b>（成交價－屋主取得房屋價＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。<br>
+            若 <b>出售價格</b> 低於 <b>屋主取得房屋價</b> ，數值自動歸零。
           </div>
           <div class="flow-line">${line1a}</div>
           <div class="flow-line">${line1b}</div>
           <div class="flow-line">${line1c}</div>
           <div class="flow-line">${line3}</div>
           <div class="flow-group-desc">
-            若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－屋主取得房屋價＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇優（從高）認列</b> 。
+            若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－屋主取得房屋價＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇高認列</b> 。
           </div>
         </div>
         <div class="flow-group">
@@ -4738,6 +4854,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           <div class="flow-group-title">④ 屋主利潤</div>
           <div class="flow-line">${line5a}</div>
           <div class="flow-line">${line5b}</div>
+          <div class="flow-line">${line5c}</div>
         </div>
         <div class="flow-group">
           <div class="flow-group-title">⑤ 目標利潤反推仲退</div>
