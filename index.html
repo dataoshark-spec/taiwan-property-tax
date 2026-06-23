@@ -2307,6 +2307,8 @@
     border-bottom: 1px solid #F4F3ED;
   }
   .pg-rows .pg-row:last-child { border-bottom: none; }
+  /* 貸款合併行:補回與上方「付款明細」group 之間的區隔線(未付款是 last-child 無底線,跨 group 會缺線) */
+  .pg-row-loan { border-top: 1px solid #F4F3ED; }
 
   /* 加扣欄(基底) */
   .pg-op {
@@ -2474,7 +2476,7 @@
   .pg-note-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px 8px;
+    gap: 4px 0;
   }
   .pg-note-chips span {
     color: #6B6A64;
@@ -2483,9 +2485,9 @@
     line-height: 1.5;
   }
   .pg-note-chips span:not(:last-child)::after {
-    content: ' ·';
+    content: ' ／ ';
     color: #C8C7C0;
-    margin-left: 4px;
+    white-space: pre;
   }
 
   /* 總計列(賣方總收入等)— 米色系微 highlight,跟整頁森林系協調 */
@@ -3292,7 +3294,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623AA
+    1150623AD
   </div>
 </div>
 
@@ -4000,7 +4002,7 @@ function renderPartyTables(d) {
     </div>
 
     <!-- 段標:貸款計算基準 -->
-    <div class="pg-section">貸款計算 ( 以合約價為基準 )</div>
+    <div class="pg-section">貸款計算</div>
 
     <!-- 群組 2:預計貸款成數 + 自備款(無豎標籤,左側對齊) -->
     <div class="pg-group pg-group-noVlabel">
@@ -4021,7 +4023,7 @@ function renderPartyTables(d) {
     </div>
 
     <!-- 段標 -->
-    <div class="pg-section">其它相關費用 ( 所需細目 )</div>
+    <div class="pg-section">相關費用</div>
 
     <!-- 群組 3:有金額的買方相關費用(無豎標籤,左側對齊) -->
     <div class="pg-group pg-group-noVlabel">
@@ -4046,7 +4048,7 @@ function renderPartyTables(d) {
       <div class="pg-note-title">其它費用 ( 因案而異,不列入試算 )</div>
       <div class="pg-note-chips">
         <span>契稅</span>
-        <span>印花稅 ( 土地、建物 )</span>
+        <span>印花稅</span>
         <span>代書費</span>
         <span>地政登記規費</span>
       </div>
@@ -4090,7 +4092,7 @@ function renderPartyTables(d) {
       </div>
     </div>
 
-    <div class="pg-section">其它相關費用</div>
+    <div class="pg-section">相關費用</div>
 
     <div class="pg-group pg-group-noVlabel">
       <div class="pg-rows">
@@ -4929,10 +4931,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       </div>
 
       <!-- 買方付款明細 -->
-      <div class="pg-group">
-        <div class="pg-vlabel">
-          <div class="pg-vlabel-text">付款明細</div>
-        </div>
+      <div class="pg-section">付款明細</div>
+      <div class="pg-group pg-group-noVlabel">
         <div class="pg-rows">
           <div class="pg-row">
             <div class="pg-op"></div>
@@ -4956,20 +4956,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       </div>
 
       <!-- 貸款資訊(從購屋價 - 已付 - 未付 推算)-->
-      <div class="pg-group">
-        <div class="pg-vlabel">
-          <div class="pg-vlabel-text">貸款</div>
-        </div>
+      <div class="pg-section">貸款計算</div>
+      <div class="pg-group pg-group-noVlabel">
         <div class="pg-rows">
           <div class="pg-row">
             <div class="pg-op"></div>
-            <div class="pg-label">貸款成數</div>
-            <div class="pg-value">${d.loanRatePct.toFixed(2)}%</div>
-            <div class="pg-unit"></div>
-          </div>
-          <div class="pg-row">
-            <div class="pg-op"></div>
-            <div class="pg-label">貸款金額</div>
+            <div class="pg-label">貸款成數 <span class="pg-pct-text">${d.loanRatePct.toFixed(2)}%</span></div>
             <div class="pg-value">${fmtW2(d.loanAmt)}</div>
             <div class="pg-unit">萬</div>
           </div>
@@ -4977,7 +4969,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       </div>
 
       <!-- 其它費用(履保 + 代書,Excel F81/F84)-->
-      <div class="pg-section">其它相關費用</div>
+      <div class="pg-section">相關費用</div>
       <div class="pg-group">
         <div class="pg-vlabel pg-vlabel-empty"></div>
         <div class="pg-rows">
@@ -5038,7 +5030,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           </div>
         </div>
 
-        <div class="pg-section">其它相關費用</div>
+        <div class="pg-section">相關費用</div>
         <div class="pg-group pg-group-noVlabel">
           <div class="pg-rows">
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">不可抵扣成本</div><div class="pg-value">${fmtN(sNonDed)}</div><div class="pg-unit">元</div></div>
