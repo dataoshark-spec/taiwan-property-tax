@@ -3292,7 +3292,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623Y
+    1150623Z
   </div>
 </div>
 
@@ -3345,6 +3345,8 @@
 const $ = id => document.getElementById(id);
 const fmt = n => Math.round(n).toLocaleString();
 const fmtWanShort = n => (Math.round(n / 100) / 100).toFixed(2);
+// 無條件捨去版(專給屋主最終利潤:避免 -99.9961 四捨五入進位成 -100.00)
+const fmtWanTrunc = n => (Math.trunc(n / 100) / 100).toFixed(2);
 // 元轉萬、4 位小數(dashboard 副註用)
 const fmtWan4 = n => isFinite(n) ? (n / 10000).toFixed(4) : '—';
 
@@ -3471,7 +3473,7 @@ function calc() {
   const roi = buy > 0 ? (profit / buy) * 100 : 0;
 
   // === Dashboard 摘要更新 ===
-  $('d_profit').textContent = fmtWanShort(profit);
+  $('d_profit').textContent = fmtWanTrunc(profit);
   $('d_profit').classList.toggle('neg', profit < 0);
 
   // === 防呆列更新 ===
