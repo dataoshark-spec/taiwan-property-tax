@@ -3292,7 +3292,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623Z
+    1150623AA
   </div>
 </div>
 
@@ -3520,17 +3520,17 @@ function calc() {
   if ($('s_limit')) setSafetyValue('s_limit', (safetyCheck * 100).toFixed(2) + '%');
   if ($('s_final')) setSafetyValue('s_final', (finalCommission * 100).toFixed(2) + '%');
   $('d_rate').textContent = rateSelected ? (rate * 100).toFixed(0) + '%' : '—';
-  if ($('d_buyer_total')) $('d_buyer_total').textContent = fmtWanShort(buyerTotal);
-  if ($('d_acq_cost')) $('d_acq_cost').textContent = fmtWanShort(buyCost);
+  if ($('d_buyer_total')) $('d_buyer_total').textContent = fmtWanTrunc(buyerTotal);
+  if ($('d_acq_cost')) $('d_acq_cost').textContent = fmtWanTrunc(buyCost);
   // 「出售可列舉」格只顯示「出售雜項+仲介費(不含土增稅)」(sellCostExclLandTax),非取大值;
   // 稅基計算仍用 sellDeductible = MAX(免稅額, 雜項+仲介),兩者刻意分離
-  if ($('d_sell_ded')) $('d_sell_ded').textContent = fmtWanShort(sellCostExclLandTax);
-  if ($('d_exempt')) $('d_exempt').textContent = fmtWanShort(exempt3pct);
-  if ($('d_buyer_amt')) $('d_buyer_amt').textContent = fmtWanShort(buyerByPct) + ' 萬';
+  if ($('d_sell_ded')) $('d_sell_ded').textContent = fmtWanTrunc(sellCostExclLandTax);
+  if ($('d_exempt')) $('d_exempt').textContent = fmtWanTrunc(exempt3pct);
+  if ($('d_buyer_amt')) $('d_buyer_amt').textContent = fmtWanTrunc(buyerByPct) + ' 萬';
   if ($('d_buyer_pct')) $('d_buyer_pct').textContent = sale > 0 ? ((buyerFixed / sale) * 100).toFixed(4) + ' %' : '— %';
   if ($('d_seller_amt')) $('d_seller_amt').textContent = fmtWan4(agentFee);
   // 新增的小附註框
-  if ($('d_buy_taxfee')) $('d_buy_taxfee').textContent = fmtWanShort(buyCost);
+  if ($('d_buy_taxfee')) $('d_buy_taxfee').textContent = fmtWanTrunc(buyCost);
   if ($('d_buyer_pct_amt')) $('d_buyer_pct_amt').textContent = fmtWan4(buyerByPct);
   if ($('d_target_now')) $('d_target_now').textContent = fmtWan4(profit);
 
