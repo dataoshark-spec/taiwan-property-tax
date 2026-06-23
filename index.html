@@ -3292,7 +3292,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623W
+    1150623Y
   </div>
 </div>
 
@@ -5906,15 +5906,16 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // 等鍵盤動畫展開後再量,確保 kb.offsetHeight 正確
     setTimeout(() => {
       const kbH = kb.offsetHeight || 360;
-      const visibleTop = 70;                          // 上方保留一點空間
-      const visibleBottom = window.innerHeight - kbH; // 鍵盤上緣
+      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      const kbTop = vh - kbH;        // 鍵盤上緣
+      const safeTop = 80;            // 上方(標題列)保留空間
       const r = el.getBoundingClientRect();
-      // 欄位若被鍵盤遮到、或太靠上,捲動讓它停在可視區中段
-      if (r.bottom > visibleBottom - 12 || r.top < visibleTop){
-        const target = (visibleBottom + visibleTop) / 2 - r.height / 2;
-        window.scrollBy({ top: r.top - target, behavior: 'smooth' });
+      // 欄位被鍵盤遮到、或太靠上時,捲動讓它停在鍵盤上方一點
+      if (r.bottom > kbTop - 16 || r.top < safeTop){
+        const desiredBottom = kbTop - 24;        // 欄位底部落在鍵盤上緣上方 24px
+        window.scrollBy({ top: r.bottom - desiredBottom, behavior: 'smooth' });
       }
-    }, 60);
+    }, 80);
   }
 
   function openKb(input){
@@ -5933,6 +5934,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     input.classList.add('ck-active');
     backdrop.classList.add('show');
     kb.classList.add('show');
+    // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
+    document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
     scrollIntoView(input);
   }
 
@@ -5960,6 +5963,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (targetInput) targetInput.classList.remove('ck-active');
     backdrop.classList.remove('show');
     kb.classList.remove('show');
+    document.body.style.paddingBottom = '';
     targetInput = null;
     expr = '';
   }
