@@ -3294,7 +3294,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623AE
+    1150623AF
   </div>
 </div>
 
@@ -5465,10 +5465,19 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
   cb.addEventListener('click', () => {
     const panels = document.getElementById('pTabPanels');
     if (!panels) return;
+    const tabs = document.querySelectorAll('.tab-btn[data-ptab]');
     if (panels.classList.contains('hidden')) {
+      // 展開:恢復上次選取的分頁
       panels.classList.remove('hidden');
       cb.classList.remove('collapsed');
+      const last = cb.dataset.lastTab || 'psell';
+      tabs.forEach(b => b.classList.toggle('active', b.getAttribute('data-ptab') === last));
+      document.querySelectorAll('.presale-body .tab-content').forEach(c => c.classList.toggle('active', c.id === 'ptab-' + last));
     } else {
+      // 收合:記住目前分頁,移除所有 active
+      const active = [...tabs].find(b => b.classList.contains('active'));
+      cb.dataset.lastTab = active ? active.getAttribute('data-ptab') : 'psell';
+      tabs.forEach(b => b.classList.remove('active'));
       panels.classList.add('hidden');
       cb.classList.add('collapsed');
     }
@@ -5479,10 +5488,19 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
 $('collapseBtn').addEventListener('click', () => {
   const panels = $('tabPanels');
   const btn = $('collapseBtn');
+  const tabs = document.querySelectorAll('.tab-btn[data-tab]');
   if (panels.classList.contains('hidden')) {
+    // 展開:恢復上次選取的分頁(深色)
     panels.classList.remove('hidden');
     btn.classList.remove('collapsed');
+    const last = btn.dataset.lastTab || 'sell';
+    tabs.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === last));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + last));
   } else {
+    // 收合:記住目前分頁,移除所有 active(三個 tab 都恢復白色)
+    const active = [...tabs].find(b => b.classList.contains('active'));
+    btn.dataset.lastTab = active ? active.getAttribute('data-tab') : 'sell';
+    tabs.forEach(b => b.classList.remove('active'));
     panels.classList.add('hidden');
     btn.classList.add('collapsed');
   }
