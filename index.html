@@ -1888,7 +1888,7 @@
     background: transparent !important;
     border: none !important;
     border-radius: 0 !important;
-    padding: 2px 4px !important;
+    padding: 2px 2px !important;
     text-align: center !important;
     overflow: hidden !important;
     display: flex !important;
@@ -1988,14 +1988,14 @@
   /* 運算子:放大、加粗,做為節奏標記 */
   .flow-op {
     flex: 0 0 auto !important;
-    min-width: 18px !important;
+    min-width: 12px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 15px !important;
+    font-size: 12px !important;
     font-weight: 400 !important;
     color: #BCBBB4 !important;
-    padding: 0 1px !important;
+    padding: 0 !important;
     line-height: 1 !important;
   }
   /* 「=」 特別一點:深一階,提示「這是要看的東西」 */
@@ -2823,7 +2823,6 @@
     <button type="button" class="ck-done" data-k="done">完成</button>
   </div>
   </div>
-</div>
 
 <div class="container">
 
@@ -3294,7 +3293,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150623AF
+    1150623AH
   </div>
 </div>
 
@@ -3677,9 +3676,9 @@ function autoFitFlowNumbers() {
     const available = cellWidth - padL - padR - 2; // 2px 安全邊
     if (available <= 0) return;
 
-    // 從基準往下找最大塞得下的字級(0.5px 步進)
-    let chosen = 9.5;
-    for (let s = baseSize; s >= 9.5; s -= 0.5) {
+    // 從基準往下找最大塞得下的字級(0.5px 步進);下限 5.5px 容納窄螢幕極窄並排格的長數字
+    let chosen = 5.5;
+    for (let s = baseSize; s >= 5.5; s -= 0.5) {
       mirror.style.fontSize = s + 'px';
       if (mirror.offsetWidth <= available) { chosen = s; break; }
     }
@@ -3916,7 +3915,7 @@ function renderFlow(d) {
         <div class="flow-line">${line1b}</div>
         <div class="flow-line">${line1c}</div>
         <div class="flow-group-desc">
-          若有列舉出實際成本與費用（如：仲介費、裝潢費、履保、代書費⋯），其加總金額若高於法定減除費用（成交價 3％，上限 30 萬），則可 <b>擇優（從高）認列</b> 。
+          若有列舉出實際成本與費用（如：仲介費、裝潢費、履保、代書費⋯），其加總金額若高於法定減除費用（成交價 3％，上限 30 萬），則可 <b>擇高認列</b> 。
         </div>
       </div>
       <div class="flow-group">
@@ -5524,10 +5523,12 @@ function currentVerKey() {
 // 清空狀態下,使用者第一次輸入任何欄位時:
 //  1) 把該版「鎖定預設欄位」自動回填預設值(含 placeholder),解除 cleared 旗標
 //  2) 若級距仍為未選(''),自動帶回預設級距
-function restoreLockedDefaults(verKey) {
+function restoreLockedDefaults(verKey, skipId) {
   LOCKED_DEFAULT_FIELDS[verKey].forEach(id => {
     const el = $(id);
     if (!el) return;
+    // 使用者當下正在輸入、且已填了值的那一格 → 不要用預設值蓋掉它(其他鎖定欄位照常回填;沒填值的格也照常回填)
+    if (id === skipId && String(el.value).trim() !== '') return;
     if (el.dataset.cleared === '1') {
       const def = el.getAttribute('data-default');
       el.value = (def !== null && def !== '') ? def : '';
@@ -5680,14 +5681,14 @@ window.syncClearBtnForVer = syncClearBtnForVer;
 // 使用者一旦自己輸入/改了任何欄位:
 //  1) 該版若處於清空狀態 → 自動回填鎖定預設欄位 + 級距、放棄「恢復」、按鈕切回「清空數值」
 //  2) 選級距(SELECT change)同樣視為「第一次輸入」
-function handleFirstInput(verKey) {
+function handleFirstInput(verKey, sourceId) {
   // 兩種清空狀態都要在第一次輸入時回填鎖定欄位灰字:
   //  (1) 一般清空:clearSnapshots 有 snapshot
   //  (2) 首次初始清空:initialClearState 為 true(無 snapshot)
   const inCleared = clearSnapshots[verKey] !== null;
   const inInitial = initialClearState[verKey] === true;
   if (inCleared || inInitial) {
-    restoreLockedDefaults(verKey);
+    restoreLockedDefaults(verKey, sourceId);
     clearSnapshots[verKey] = null;
     initialClearState[verKey] = false;
     if (verKey === currentVerKey()) resetClearBtn();
@@ -5705,7 +5706,7 @@ FIELDS.forEach(id => {
   const el = $(id);
   if (!el) return;
   const evt = el.tagName === 'SELECT' ? 'change' : 'input';
-  el.addEventListener(evt, () => handleFirstInput('ready'));
+  el.addEventListener(evt, () => handleFirstInput('ready', id));
 });
 // 預售版欄位綁定(涵蓋主表 + Tab 詳細欄位 + 級距下拉)
 ['p_sale','p_buy','p_paid','p_unpaid','p_first_price','p_target',
@@ -5716,7 +5717,7 @@ FIELDS.forEach(id => {
   const el = $(id);
   if (!el) return;
   const evt = el.tagName === 'SELECT' ? 'change' : 'input';
-  el.addEventListener(evt, () => handleFirstInput('preview'));
+  el.addEventListener(evt, () => handleFirstInput('preview', id));
 });
 
 // === Label 自適應縮放 — 防止文字斷行成第二排 ===
@@ -5888,6 +5889,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   let targetInput = null;   // 目前編輯的欄位
   let expr = '';            // 目前輸入的數字字串
+  let touched = false;      // 本次開鍵盤後使用者是否實際編輯過(含按 C/退格清空);用來區分「點進來沒動」與「刻意清空」
 
   // 安全求值:只允許數字、小數點、+ - * / % 與括號
   function evalExpr(s){
@@ -5940,6 +5942,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     input.dataset.ckOrigValue = input.value || '';
     // 一律以空白起始 — 使用者點欄位的意圖就是改值,留舊值會疊上去
     expr = '';
+    touched = false;        // 重置:本次尚未編輯
     // 編輯期間切成 text 才能顯示輸入過程
     input.type = 'text';
     input.value = '';
@@ -5956,8 +5959,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (!targetInput) return;
     let finalVal;
     if (expr.trim() === '') {
-      // 沒輸入任何東西 → 還原原值(使用者只是點進來看,不該被清空)
-      finalVal = targetInput.dataset.ckOrigValue || '';
+      // 區分兩種「空」:touched=false 是點進來沒動 → 還原原值;
+      // touched=true 是使用者刻意按 C/退格清空 → 寫入空值,讓欄位真的清掉
+      finalVal = touched ? '' : (targetInput.dataset.ckOrigValue || '');
     } else {
       const v = evalExpr(expr);
       finalVal = (v !== null) ? fmtNum(v) : '';
@@ -5983,16 +5987,14 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // 按鍵處理
   function pressKey(k){
     if (k === '' || k == null) return;
-    if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換
+    if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換(不算編輯內容)
+    if (k === 'done'){ closeKb(); return; }      // 完成(不算編輯內容)
+    touched = true;   // 以下任一鍵都代表使用者實際編輯(含 C / 退格 清空)
     if (k === 'C'){ expr = ''; }
     else if (k === 'back'){ expr = expr.slice(0, -1); }
     else if (k === '='){
       const v = evalExpr(expr);
       if (v !== null) expr = fmtNum(v);
-    }
-    else if (k === 'done'){
-      closeKb();
-      return;
     }
     else if (k === '.'){
       if (!expr.includes('.')) expr += (expr === '' ? '0.' : '.');
