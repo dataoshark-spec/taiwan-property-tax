@@ -3293,7 +3293,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625A
+    1150625B
   </div>
 </div>
 
@@ -5440,6 +5440,8 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
   const order = ['psell','pbuy'];
   let x0 = 0, y0 = 0, tracking = false;
   panels.addEventListener('touchstart', e => {
+    // 起點在可輸入欄位上 → 不偵測滑動(避免改數字時誤觸翻頁)
+    if (e.target.closest('input, .pt-input, button')) { tracking = false; return; }
     if (e.touches.length !== 1) { tracking = false; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; tracking = true;
   }, { passive: true });
