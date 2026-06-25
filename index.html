@@ -658,6 +658,8 @@
     position: relative;
     vertical-align: middle;
   }
+  /* 可輸入框文字垂直置中:改用字型自然行高,避免行動裝置 number input 文字偏下(唯讀 display 框仍沿用上方固定行高) */
+  .dash-input { line-height: normal !important; }
   /* dash-display 用 line-height 對齊(跟 input 一致) */
   .dash-display {
     line-height: 42px !important;
@@ -3293,7 +3295,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625C
+    1150625D
   </div>
 </div>
 
