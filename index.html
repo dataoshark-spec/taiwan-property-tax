@@ -3300,7 +3300,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625I
+    1150625J
   </div>
 </div>
 
@@ -5428,7 +5428,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       if (costOpen && cBtn) cBtn.click();
       if (flowSec) flowSec.classList.remove('open');
       if (partySec) partySec.classList.remove('open');
-      window.scrollTo({ top: 0, behavior: 'smooth' });  // 收合後回到最上方
+      window.scrollTo(0, 0);  // 瞬間回頂(避免平滑捲動與三區塊 0.3s 收合動畫疊加造成卡頓)
     } else {
       // 全收合 → 全展開
       if (panels && panels.classList.contains('hidden') && cBtn) cBtn.click();
