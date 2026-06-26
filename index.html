@@ -660,12 +660,10 @@
   }
   /* 可輸入框文字垂直置中:用上下對稱 padding 從數學上置中,並以緊湊行高消除 CJK 字型 descent 造成的行動裝置偏下(唯讀 display 框仍沿用上方固定行高) */
   .dash-input {
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    line-height: 1 !important;
-    padding-top: 11px !important;
-    padding-bottom: 11px !important;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+    line-height: 44px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
   }
   /* dash-display 用 line-height 對齊(跟 input 一致) */
   .dash-display {
@@ -3302,7 +3300,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625E
+    1150625F
   </div>
 </div>
 
