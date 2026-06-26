@@ -3300,7 +3300,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625H
+    1150625I
   </div>
 </div>
 
@@ -6222,6 +6222,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     var t = e.target.closest ? e.target.closest(HAPTIC_SEL) : null;
     if (t) hapticTap();
   }, true);
+})();
+
+// 預設:成本明細 / 公式流程 / 三方明細 三區塊載入時全部收起
+(function(){
+  [['tabPanels','collapseBtn'],['pTabPanels','pCollapseBtn']].forEach(function(pair){
+    var panels=document.getElementById(pair[0]);
+    var btn=document.getElementById(pair[1]);
+    if(panels) panels.classList.add('hidden');
+    if(btn) btn.classList.add('collapsed');
+  });
+  document.querySelectorAll('.tab-btn[data-tab], .tab-btn[data-ptab]').forEach(function(b){ b.classList.remove('active'); });
+  ['flowSection','partySection'].forEach(function(id){ var s=document.getElementById(id); if(s) s.classList.remove('open'); });
 })();
 
 
