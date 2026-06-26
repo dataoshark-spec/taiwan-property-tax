@@ -3300,7 +3300,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150625F
+    1150625H
   </div>
 </div>
 
@@ -5413,8 +5413,45 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (typeof syncClearBtnForVer === 'function') syncClearBtnForVer();
     try { localStorage.setItem(KEY, ver); } catch(e) {}
   }
+  // 三區塊(成本明細 / 公式流程 / 三方明細)一鍵全展開或全收合
+  function toggleAllSections(ver) {
+    const isReady = (ver === 'ready');
+    const panels = document.getElementById(isReady ? 'tabPanels' : 'pTabPanels');
+    const cBtn = document.getElementById(isReady ? 'collapseBtn' : 'pCollapseBtn');
+    const flowSec = document.getElementById('flowSection');
+    const partySec = document.getElementById('partySection');
+    const costOpen = panels && !panels.classList.contains('hidden');
+    const flowOpen = flowSec && flowSec.classList.contains('open');
+    const partyOpen = partySec && partySec.classList.contains('open');
+    if (costOpen || flowOpen || partyOpen) {
+      // 有任一展開 → 全收合
+      if (costOpen && cBtn) cBtn.click();
+      if (flowSec) flowSec.classList.remove('open');
+      if (partySec) partySec.classList.remove('open');
+      window.scrollTo({ top: 0, behavior: 'smooth' });  // 收合後回到最上方
+    } else {
+      // 全收合 → 全展開
+      if (panels && panels.classList.contains('hidden') && cBtn) cBtn.click();
+      if (flowSec) flowSec.classList.add('open');
+      if (partySec) partySec.classList.add('open');
+      if (flowSec) requestAnimationFrame(() => { if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers(); });
+    }
+  }
+  // 雙擊「當前已在的版本鈕」→ 觸發全展開/全收合(單擊維持原切版行為)
+  let _verLastClk = 0, _verLastBtn = null, _verWasActive = false;
   btns.forEach(b => {
-    b.addEventListener('click', () => apply(b.dataset.ver));
+    b.addEventListener('click', () => {
+      const now = Date.now();
+      const wasActive = b.classList.contains('active');
+      const dbl = (b === _verLastBtn) && (now - _verLastClk < 350);
+      if (dbl && _verWasActive) {
+        _verLastClk = 0; _verLastBtn = null; _verWasActive = false;
+        toggleAllSections(b.dataset.ver);
+        return;
+      }
+      _verLastClk = now; _verLastBtn = b; _verWasActive = wasActive;
+      apply(b.dataset.ver);
+    });
   });
   // 啟動時還原
   let saved = 'ready';
