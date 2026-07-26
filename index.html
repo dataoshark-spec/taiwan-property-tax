@@ -2662,28 +2662,26 @@
   }
   .calc-kb-backdrop.show { opacity: 0; pointer-events: none !important; }
 
+  /* 收合只靠 transform(與 B 相同);不要用 visibility:hidden,否則關鍵盤會瞬間消失、感覺很卡 */
   .calc-kb {
     position: fixed;
-    left: 50%;
-    right: auto;
+    left: 0;
+    right: 0;
     bottom: 0;
-    /* 寬度跟放大後的軟體一致;收合時不用 scale,避免底部露出握把 */
-    width: min(100%, calc(720px * var(--app-scale)));
-    max-width: min(100%, calc(720px * var(--app-scale)));
+    width: 100%;
+    max-width: 100%;
     background: #F2F2EE;
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
     padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-    transform: translateX(-50%) translateY(110%);
+    transform: translateY(110%);
     transition: transform .26s cubic-bezier(.22,.61,.36,1);
     z-index: 999;
     touch-action: none;
-    visibility: hidden;
     pointer-events: none;
   }
   .calc-kb.show {
-    transform: translateX(-50%) translateY(0);
-    visibility: visible;
+    transform: translateY(0);
     pointer-events: auto;
   }
 
@@ -3372,7 +3370,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713O
+    1150713P
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6212,10 +6210,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     commitToField();
     clearCkActive();
     backdrop.classList.remove('show');
+    // 先播下滑動畫,底部 padding 等動畫結束再清,避免收合時整頁猛跳
     kb.classList.remove('show');
-    document.body.style.paddingBottom = '';
     targetInput = null;
     expr = '';
+    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
@@ -6229,10 +6228,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     clearCkActive();
     backdrop.classList.remove('show');
     kb.classList.remove('show');
-    document.body.style.paddingBottom = '';
     targetInput = null;
     expr = '';
     touched = false;
+    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
   }
 
   // 按鍵處理
