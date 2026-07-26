@@ -8,20 +8,53 @@
 <!-- 桌面略放大(~1.2倍):比 D 稍大,但不拉滿全螢幕 -->
 <script>
 (function(){
-  var DESIGN = 720, MIN_W = 800, SCALE = 1.2;
+  var DESIGN = 720, MIN_W = 800, SCALE = 1.2, zoomOk = null;
+  function detectZoomSupport(){
+    if (zoomOk !== null) return zoomOk;
+    try {
+      var el = document.createElement('div');
+      el.style.cssText = 'width:100px;height:1px;position:absolute;left:-9999px;top:0;';
+      document.documentElement.appendChild(el);
+      el.style.zoom = '2';
+      var measured = el.getBoundingClientRect().width;
+      el.style.zoom = '';
+      el.remove();
+      zoomOk = measured > 150;
+    } catch (e) { zoomOk = false; }
+    return zoomOk;
+  }
   function applyDesktopScale(){
     var z = window.innerWidth >= MIN_W ? SCALE : 1;
+    var useZoom = z > 1 && detectZoomSupport();
     document.documentElement.style.setProperty('--app-scale', String(z));
     var shell = document.getElementById('appShell');
-    if (document.body) document.body.classList.toggle('is-app-scaled', z > 1);
+    if (document.body) {
+      document.body.classList.toggle('is-app-scaled', z > 1);
+      document.body.classList.toggle('is-app-scaled-zoom', useZoom);
+      document.body.classList.toggle('is-app-scaled-transform', z > 1 && !useZoom);
+    }
     if (!shell) return;
     if (z > 1) {
       shell.style.width = DESIGN + 'px';
       shell.style.maxWidth = DESIGN + 'px';
-      shell.style.marginBottom = '';
-      var h = shell.scrollHeight;
-      shell.style.marginBottom = ((z - 1) * h) + 'px';
+      if (useZoom) {
+        // zoom 不會破壞 sticky;transform:scale 會
+        shell.style.zoom = String(z);
+        shell.style.transform = '';
+        shell.style.transformOrigin = '';
+        shell.style.marginBottom = '';
+      } else {
+        shell.style.zoom = '';
+        shell.style.transform = 'scale(' + z + ')';
+        shell.style.transformOrigin = 'top center';
+        shell.style.marginBottom = '';
+        var h = shell.scrollHeight;
+        shell.style.marginBottom = ((z - 1) * h) + 'px';
+      }
     } else {
+      shell.style.zoom = '';
+      shell.style.transform = '';
+      shell.style.transformOrigin = '';
       shell.style.width = '';
       shell.style.maxWidth = '';
       shell.style.marginBottom = '';
@@ -129,11 +162,10 @@
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
-    transform: scale(var(--app-scale));
-    transform-origin: top center;
   }
   body.is-app-scaled { overflow-x: hidden; }
-  body.is-app-scaled .sticky-top { position: relative; }
+  /* 僅 transform 備援會破壞 sticky;zoom 路徑維持 sticky */
+  body.is-app-scaled-transform .sticky-top { position: relative; }
   body.is-app-scaled .app-shell .container { max-width: none; }
 
   /* 防呆提示列 */
@@ -3369,7 +3401,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713S
+    1150713T
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -5608,7 +5640,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       if (flowSec) requestAnimationFrame(() => { if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers(); });
     }
   }
-  // 雙擊「當前已在的版本鈕」→ 觸發全展開/全收合(單擊維持原切版行為)
+  // 雙擊「當前已在的版本鈕」→ 全展開/全收合;單擊已在的版本 → 回頂;單擊另一版 → 切版
   let _verLastClk = 0, _verLastBtn = null, _verWasActive = false;
   btns.forEach(b => {
     b.addEventListener('click', () => {
@@ -5621,6 +5653,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         return;
       }
       _verLastClk = now; _verLastBtn = b; _verWasActive = wasActive;
+      if (wasActive) {
+        window.scrollTo(0, 0);
+        return;
+      }
       apply(b.dataset.ver);
     });
   });
