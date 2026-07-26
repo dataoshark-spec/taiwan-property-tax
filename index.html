@@ -3369,7 +3369,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713Q
+    1150713R
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6152,6 +6152,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
+    resetKbGestureState();
     // 先關掉前一格的高亮
     document.querySelectorAll('.ck-active')
       .forEach(el => el.classList.remove('ck-active'));
@@ -6205,6 +6206,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     document.querySelectorAll('.ck-active').forEach(el => el.classList.remove('ck-active'));
   }
 
+  let _kbTouchMoved = false;
+  function resetKbGestureState(){
+    kb._ignoreClick = false;
+    _kbTouchMoved = false;
+    if (typeof _kbClearPtr === 'function') _kbClearPtr();
+  }
+
   function closeKb(){
     commitToField();
     clearCkActive();
@@ -6213,6 +6221,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kb.classList.remove('show');
     targetInput = null;
     expr = '';
+    // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
+    resetKbGestureState();
     setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
   }
 
@@ -6230,6 +6240,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     targetInput = null;
     expr = '';
     touched = false;
+    resetKbGestureState();
     setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
   }
 
@@ -6348,6 +6359,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       clearPressed(); // 滑動中絕不顯示按鍵壓下
     }
   });
+  function _eatOneDocumentClick(ms){
+    // 只吃「點在鍵盤上」的殘留 click;點輸入欄要放行(否則收起後快速點欄會沒反應)
+    const eat = (ev) => {
+      document.removeEventListener('click', eat, true);
+      if (kb.contains(ev.target)) {
+        ev.preventDefault();
+        ev.stopPropagation();
+      }
+    };
+    document.addEventListener('click', eat, true);
+    setTimeout(() => document.removeEventListener('click', eat, true), ms || 450);
+  }
   function _kbFinishPtr(e, cancelled){
     if (!_kbPtr || e.pointerId !== _kbPtr.id) return;
     if (_kbPtr.timer) { clearTimeout(_kbPtr.timer); _kbPtr.timer = null; }
@@ -6362,16 +6385,19 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       return;
     }
     if (swiped) {
-      // 下滑/左右滑 = 收起;抑制後續 click,避免誤觸按鍵
-      kb._ignoreClick = true;
+      // 下滑/左右滑 = 收起;吃掉殘留 click,避免誤觸按鍵
+      try { e.preventDefault(); } catch(_){}
       _kbClearPtr();
       closeKb();
+      _eatOneDocumentClick(450);
       return;
     }
     if (_kbPtr.moved) {
       // 有移動但未達收起門檻:不當點擊
+      try { e.preventDefault(); } catch(_){}
       kb._ignoreClick = true;
       _kbClearPtr();
+      setTimeout(() => { kb._ignoreClick = false; }, 450);
       return;
     }
     if (wasTap && btn) {
@@ -6383,7 +6409,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }
   kb.addEventListener('pointerup', (e) => _kbFinishPtr(e, false));
   kb.addEventListener('pointercancel', (e) => _kbFinishPtr(e, true));
-  // 滑動後產生的 click 一律吃掉
+  // 保險:若仍標了 ignore,只擋鍵盤內 click
   kb.addEventListener('click', (e) => {
     if (!kb._ignoreClick) return;
     e.preventDefault();
@@ -6392,7 +6418,6 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }, true);
   // 點外面關閉:不擋滑動(遮罩已 pointer-events:none)。
   // 用「有明顯移動就不當點擊」避免滑頁時誤關;點到可輸入欄位則交給換欄,不關閉。
-  let _kbTouchMoved = false;
   let _kbTouchY0 = 0;
   document.addEventListener('touchstart', (e) => {
     if (!kb.classList.contains('show') || !e.touches || !e.touches[0]) return;
@@ -6622,9 +6647,14 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       }
       e.target.blur();
     });
-    el.addEventListener('click', () => {
+    // 用 pointerup 開鍵盤:收起後若殘留 click 被吃掉,快速點欄位仍有反應
+    let fieldPtr = null;
+    let lastOpenAt = 0;
+    function tryOpenField(){
       if (!canOpenKb(el)) return;
-      // 鍵盤已開且點另一格:先提交舊值再換綁(一次點擊即可切換)
+      const now = Date.now();
+      if (now - lastOpenAt < 300 && kb.classList.contains('show') && targetInput === el) return;
+      lastOpenAt = now;
       if (kb.classList.contains('show') && targetInput && targetInput !== el) {
         const nextId = el.id;
         commitToField();
@@ -6633,7 +6663,27 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
         return;
       }
       openKb(el);
+    }
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      fieldPtr = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false };
     });
+    el.addEventListener('pointermove', (e) => {
+      if (!fieldPtr || e.pointerId !== fieldPtr.id) return;
+      if (Math.abs(e.clientX - fieldPtr.x) > 10 || Math.abs(e.clientY - fieldPtr.y) > 10) {
+        fieldPtr.moved = true;
+      }
+    });
+    el.addEventListener('pointerup', (e) => {
+      if (!fieldPtr || e.pointerId !== fieldPtr.id) return;
+      const moved = fieldPtr.moved;
+      fieldPtr = null;
+      if (moved) return;
+      // 滑鼠仍交給 click,避免和系統行為重複
+      if (e.pointerType === 'mouse') return;
+      tryOpenField();
+    });
+    el.addEventListener('click', () => { tryOpenField(); });
   }
 
   // 對固定 ID 的欄位先綁
