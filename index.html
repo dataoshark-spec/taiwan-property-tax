@@ -5,6 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F2F2A">
 <title>房地合一稅 2.0</title>
+<!-- 桌面略放大(~1.2倍):比 D 稍大,但不拉滿全螢幕 -->
+<script>
+(function(){
+  var DESIGN = 720, MIN_W = 800, SCALE = 1.2;
+  function applyDesktopScale(){
+    var z = window.innerWidth >= MIN_W ? SCALE : 1;
+    document.documentElement.style.setProperty('--app-scale', String(z));
+    var shell = document.getElementById('appShell');
+    if (document.body) document.body.classList.toggle('is-app-scaled', z > 1);
+    if (!shell) return;
+    if (z > 1) {
+      shell.style.width = DESIGN + 'px';
+      shell.style.maxWidth = DESIGN + 'px';
+      shell.style.marginBottom = '';
+      var h = shell.scrollHeight;
+      shell.style.marginBottom = ((z - 1) * h) + 'px';
+    } else {
+      shell.style.width = '';
+      shell.style.maxWidth = '';
+      shell.style.marginBottom = '';
+    }
+  }
+  window.__applyDesktopScale = applyDesktopScale;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyDesktopScale);
+  } else {
+    applyDesktopScale();
+  }
+})();
+</script>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -92,6 +122,19 @@
     transform: translateX(-50%) translateY(0);
   }
   .container { max-width: 720px; margin: 0 auto; padding: 0 0 40px; }
+
+  /* 軟體實際寬度:整欄置中;桌面以 --app-scale 略放大 */
+  :root { --app-scale: 1; }
+  .app-shell {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    transform: scale(var(--app-scale));
+    transform-origin: top center;
+  }
+  body.is-app-scaled { overflow-x: hidden; }
+  body.is-app-scaled .sticky-top { position: relative; }
+  body.is-app-scaled .app-shell .container { max-width: none; }
 
   /* 防呆提示列 */
   .safety-bar {
@@ -2610,17 +2653,23 @@
   .calc-kb { --kb-accent: #1F2F2A; --kb-accent-soft: #2E4A40; }
   body.is-preview .calc-kb { --kb-accent: #1A3A5C; --kb-accent-soft: #2A4E70; }
 
+  /* 不再攔截觸控:全螢幕遮罩會擋頁面滑動、並讓換欄位要點兩次 */
   .calc-kb-backdrop {
     position: fixed; inset: 0;
-    background: rgba(0,0,0,0.18);
-    opacity: 0; pointer-events: none;
-    transition: opacity .2s ease;
+    background: transparent;
+    opacity: 0; pointer-events: none !important;
     z-index: 998;
   }
-  .calc-kb-backdrop.show { opacity: 1; pointer-events: auto; }
+  .calc-kb-backdrop.show { opacity: 0; pointer-events: none !important; }
 
+  /* 收合只靠 transform(與 B 相同);不要用 visibility:hidden,否則關鍵盤會瞬間消失、感覺很卡 */
   .calc-kb {
-    position: fixed; left: 0; right: 0; bottom: 0;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: 100%;
     background: #F2F2EE;
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
@@ -2629,8 +2678,12 @@
     transition: transform .26s cubic-bezier(.22,.61,.36,1);
     z-index: 999;
     touch-action: none;
+    pointer-events: none;
   }
-  .calc-kb.show { transform: translateY(0); }
+  .calc-kb.show {
+    transform: translateY(0);
+    pointer-events: auto;
+  }
 
   .calc-kb-grip {
     width: 38px; height: 4px; border-radius: 2px;
@@ -2638,19 +2691,64 @@
   }
   /* 數字鍵盤作用中的欄位:模擬瀏覽器原生 :focus 樣式(因為我們把欄位 blur 掉,
      原生 focus 觸發不到 → 用 ck-active class 手動套上一樣的 background + box-shadow) */
-  /* Dashboard 欄位:沿用 .dash-input:focus 的金黃光暈 */
+  /* 計算機編輯中的欄位:明顯高亮,方便 Tab 切換時辨識 */
   .dash-input.ck-active {
-    background: #FFFBE8 !important;
-    box-shadow: 0 0 0 2px rgba(255,213,138,0.3);
+    background: #FFF6D6 !important;
+    box-shadow: 0 0 0 3px rgba(255,213,138,0.95), 0 0 0 6px rgba(15,110,86,0.28) !important;
+    outline: 2px solid #0F6E56;
+    outline-offset: 0;
+    position: relative;
+    z-index: 2;
   }
-  /* Tab 區欄位:沿用 .input-table input:focus 的綠色光暈 */
-  .input-table input.ck-active:not([readonly].is-locked) {
+  .input-table input.ck-active:not([readonly].is-locked),
+  .pt-input.ck-active:not(.pt-input-pct) {
     border-color: #0F6E56 !important;
-    box-shadow: 0 0 0 3px rgba(15,110,86,0.15) !important;
+    background: #FFF6D6 !important;
+    box-shadow: 0 0 0 3px rgba(15,110,86,0.28) !important;
+    outline: 2px solid #0F6E56;
+    outline-offset: 0;
   }
-  body.is-preview .input-table input.ck-active:not([readonly].is-locked) {
+  /* 貸款成數「數字+%」:高亮整顆盒子;父層 overflow 放開避免只剩左右兩道邊 */
+  .pg-label:has(.ck-active),
+  .pg-row:has(.ck-active) {
+    overflow: visible;
+  }
+  .pg-pct-input.ck-active,
+  .pg-rate-tag-edit.ck-active,
+  .pg-kpi-edit.ck-active {
+    background: #FFF6D6 !important;
+    color: #1F2F2A !important;
+    border: 1.5px solid #0F6E56 !important;
+    /* 與上方 dash-input.ck-active 同一套金黃+綠光暈 */
+    box-shadow: 0 0 0 3px rgba(255,213,138,0.95), 0 0 0 6px rgba(15,110,86,0.28) !important;
+    outline: none;
+    position: relative;
+    z-index: 5;
+  }
+  .pg-pct-input.ck-active .pt-input-pct,
+  .pg-rate-tag-edit.ck-active .pt-input-pct,
+  .pg-kpi-edit.ck-active .pt-input-pct {
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border: none !important;
+    color: inherit !important;
+  }
+  body.is-preview .dash-input.ck-active {
+    outline-color: #1A3A5C;
+    box-shadow: 0 0 0 3px rgba(255,213,138,0.95), 0 0 0 6px rgba(26,58,92,0.28) !important;
+  }
+  body.is-preview .input-table input.ck-active:not([readonly].is-locked),
+  body.is-preview .pt-input.ck-active:not(.pt-input-pct) {
     border-color: #1A3A5C !important;
-    box-shadow: 0 0 0 3px rgba(26,58,92,0.15) !important;
+    box-shadow: 0 0 0 3px rgba(26,58,92,0.28) !important;
+    outline-color: #1A3A5C;
+  }
+  body.is-preview .pg-pct-input.ck-active,
+  body.is-preview .pg-rate-tag-edit.ck-active,
+  body.is-preview .pg-kpi-edit.ck-active {
+    border-color: #1A3A5C !important;
+    box-shadow: 0 0 0 3px rgba(255,213,138,0.95), 0 0 0 6px rgba(26,58,92,0.28) !important;
   }
 
   .calc-kb-keys {
@@ -2667,9 +2765,8 @@
     transition: transform .06s ease, filter .1s ease;
     -webkit-tap-highlight-color: transparent;
   }
-  .ck-key:active { transform: scale(0.92); filter: brightness(0.86); }
-  /* 按下即時回饋(pointerdown 加 .ck-pressed):比 :active 更明顯且可靠,
-     在亮白底鍵盤上也看得出「按下去」—— 縮放 + 壓暗 + 內陰影陷入感 */
+  /* 不用 :active:滑動收起時也會觸發,會誤顯示「按下去」 */
+  /* 按下回饋只靠確認為「點擊」後才加的 .ck-pressed */
   .ck-key.ck-pressed, .ck-done.ck-pressed {
     transform: scale(0.92);
     filter: brightness(0.82);
@@ -2709,7 +2806,7 @@
     height: 52px; cursor: pointer; margin-top: 2px;
     -webkit-tap-highlight-color: transparent;
   }
-  .ck-done:active { transform: scale(0.99); filter: brightness(0.94); }
+  /* .ck-done:active 已移除:避免滑動收起時誤顯示按下 */
   body.is-preview .ck-done { --ck-accent: #1A3A5C; }
 
   /* === 切換後:運算鍵移到「左欄」(第1欄)=== */
@@ -2754,6 +2851,7 @@
   <button class="install-banner-x" id="installDismiss" type="button" aria-label="關閉">×</button>
 </div>
 
+<div class="app-shell" id="appShell">
 <div class="sticky-top">
   <div class="header">
     <div class="header-text">
@@ -2801,36 +2899,6 @@
     <button class="ver-btn" data-ver="preview" type="button">預售版</button>
   </div>
 </div>
-
-<div class="toast" id="toast">已清空,可以開始輸入</div>
-
-<!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
-<div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
-<div class="calc-kb" id="calcKb">
-  <div class="calc-kb-grip"></div>
-  <div class="calc-kb-keys" id="calcKbKeys">
-    <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
-    <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
-    <button type="button" class="ck-key ck-fn ck-swap" data-k="swap" title="運算鍵左右切換">⇄</button>
-    <button type="button" class="ck-key ck-op ck-div" data-k="/">÷</button>
-    <button type="button" class="ck-key ck-num ck-7" data-k="7">7</button>
-    <button type="button" class="ck-key ck-num ck-8" data-k="8">8</button>
-    <button type="button" class="ck-key ck-num ck-9" data-k="9">9</button>
-    <button type="button" class="ck-key ck-op ck-mul" data-k="*">×</button>
-    <button type="button" class="ck-key ck-num ck-4" data-k="4">4</button>
-    <button type="button" class="ck-key ck-num ck-5" data-k="5">5</button>
-    <button type="button" class="ck-key ck-num ck-6" data-k="6">6</button>
-    <button type="button" class="ck-key ck-op ck-sub" data-k="-">−</button>
-    <button type="button" class="ck-key ck-num ck-1" data-k="1">1</button>
-    <button type="button" class="ck-key ck-num ck-2" data-k="2">2</button>
-    <button type="button" class="ck-key ck-num ck-3" data-k="3">3</button>
-    <button type="button" class="ck-key ck-op ck-add" data-k="+">+</button>
-    <button type="button" class="ck-key ck-num ck-zero" data-k="0">0</button>
-    <button type="button" class="ck-key ck-num ck-dot" data-k=".">.</button>
-    <button type="button" class="ck-key ck-fn ck-eq" data-k="=">=</button>
-    <button type="button" class="ck-done" data-k="done">完成</button>
-  </div>
-  </div>
 
 <div class="container">
 
@@ -3301,9 +3369,40 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713B
+    1150713Q
   </div>
 </div>
+</div><!-- /.app-shell -->
+
+<div class="toast" id="toast">已清空,可以開始輸入</div>
+
+<!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
+<div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
+<div class="calc-kb" id="calcKb">
+  <div class="calc-kb-grip"></div>
+  <div class="calc-kb-keys" id="calcKbKeys">
+    <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
+    <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
+    <button type="button" class="ck-key ck-fn ck-swap" data-k="swap" title="運算鍵左右切換">⇄</button>
+    <button type="button" class="ck-key ck-op ck-div" data-k="/">÷</button>
+    <button type="button" class="ck-key ck-num ck-7" data-k="7">7</button>
+    <button type="button" class="ck-key ck-num ck-8" data-k="8">8</button>
+    <button type="button" class="ck-key ck-num ck-9" data-k="9">9</button>
+    <button type="button" class="ck-key ck-op ck-mul" data-k="*">×</button>
+    <button type="button" class="ck-key ck-num ck-4" data-k="4">4</button>
+    <button type="button" class="ck-key ck-num ck-5" data-k="5">5</button>
+    <button type="button" class="ck-key ck-num ck-6" data-k="6">6</button>
+    <button type="button" class="ck-key ck-op ck-sub" data-k="-">−</button>
+    <button type="button" class="ck-key ck-num ck-1" data-k="1">1</button>
+    <button type="button" class="ck-key ck-num ck-2" data-k="2">2</button>
+    <button type="button" class="ck-key ck-num ck-3" data-k="3">3</button>
+    <button type="button" class="ck-key ck-op ck-add" data-k="+">+</button>
+    <button type="button" class="ck-key ck-num ck-zero" data-k="0">0</button>
+    <button type="button" class="ck-key ck-num ck-dot" data-k=".">.</button>
+    <button type="button" class="ck-key ck-fn ck-eq" data-k="=">=</button>
+    <button type="button" class="ck-done" data-k="done">完成</button>
+  </div>
+  </div>
 
 <!-- ===== 自訂級距選單 ===== -->
 <div class="rate-sheet-mask" id="rateSheetMask"></div>
@@ -3571,7 +3670,14 @@ function calc() {
     sellCostExclLandTax
   });
   // 三方明細的使用者可輸入值(預設值會在 input 元素的 placeholder/data-default 給,空白時用 fallback)
-  const ptLoanRate = (() => { const v = parseFloat(($('pt_loan_rate')||{}).value); return isNaN(v) ? 0.8 : v / 100; })();
+  const ptLoanRate = (() => {
+    const el = $('pt_loan_rate');
+    const v = parseFloat((el || {}).value);
+    if (isNaN(v)) return 0.8;
+    const pct = Math.min(100, Math.max(0, v)); // 貸款成數 0~100%
+    if (el && String(el.value) !== '' && Number(el.value) !== pct) el.value = String(pct);
+    return pct / 100;
+  })();
   const ptAgentOther = num('pt_agent_other');
 
   renderPartyTables({
@@ -4016,7 +4122,7 @@ function renderPartyTables(d) {
       <div class="pg-rows">
         <div class="pg-row">
           <div class="pg-op"></div>
-          <div class="pg-label">預計貸款成數 <span class="pg-pct-input"><input type="text" class="pt-input pt-input-pct" id="pt_loan_rate" value="${(d.buyerLoanRate*100).toFixed(0)}" inputmode="numeric" maxlength="3">%</span></div>
+          <div class="pg-label">預計貸款成數 <span class="pg-pct-input"><input type="text" class="pt-input pt-input-pct" id="pt_loan_rate" value="${Math.min(100, Math.max(0, d.buyerLoanRate*100)).toFixed(0)}" inputmode="numeric" maxlength="3" data-max="100">%</span></div>
           <div class="pg-value" id="pt_loan_amount">${fmtN(buyerLoan/10000)}</div>
           <div class="pg-unit">萬</div>
         </div>
@@ -4438,6 +4544,30 @@ document.addEventListener('input', function(e) {
     window.__negToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
   }
 }, true);
+
+// === 預計貸款成數上限 100% ===
+document.addEventListener('input', function(e) {
+  const el = e.target;
+  if (!el || el.id !== 'pt_loan_rate') return;
+  const raw = String(el.value || '').trim();
+  if (raw === '') return;
+  const v = parseFloat(raw);
+  if (isNaN(v)) return;
+  if (v <= 100 && v >= 0) return;
+  el.value = String(Math.min(100, Math.max(0, v)));
+  let toast = document.getElementById('loanCapToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'loanCapToast';
+    toast.className = 'neg-toast';
+    toast.textContent = '貸款成數上限 100%';
+    document.body.appendChild(toast);
+  }
+  toast.classList.add('show');
+  clearTimeout(window.__loanCapToastTimer);
+  window.__loanCapToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+}, true);
+
 // 點擊時自動全選(只在真正使用者點擊時觸發,不會在重建還原 focus 時觸發)
 document.addEventListener('mouseup', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('pt-input')) {
@@ -4448,6 +4578,7 @@ document.addEventListener('mouseup', (e) => {
 
 // === 自動儲存 / 還原機制 ===
 window.addEventListener('resize', () => {
+  if (typeof window.__applyDesktopScale === 'function') window.__applyDesktopScale();
   if (typeof autoFitDashNumbers === 'function') autoFitDashNumbers();
   if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers();
   if (typeof autoFitBannerNumbers === 'function') autoFitBannerNumbers();
@@ -4645,28 +4776,67 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   // 點遮罩關
   mask.addEventListener('click', close);
 
-  // 點選項 → 寫回「當前版本」的 select,並觸發對應的重算
+  // 寫回「當前版本」的 select,並觸發對應的重算
+  function applyOption(o) {
+    const select = activeSelect();
+    if (!select || !o) return false;
+    // 預售模式點到(被隱藏的)10% 不處理
+    if (isPreview() && o.dataset.value === '0.10') return false;
+    select.value = o.dataset.value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    // 預售的 select change 不一定有綁 calc,直接補呼叫
+    if (isPreview()) {
+      if (typeof window.calcPresale === 'function') window.calcPresale();
+      if (typeof window.savePresaleState === 'function') window.savePresaleState();
+    }
+    syncSelected();
+    return true;
+  }
+
+  function visibleOpts() {
+    return Array.from(opts).filter(o => o.style.display !== 'none');
+  }
+
+  // 電腦鍵盤上下鍵移動選擇
+  function moveSelection(delta) {
+    const list = visibleOpts();
+    if (!list.length) return;
+    let i = list.findIndex(o => o.classList.contains('selected'));
+    if (i < 0) i = 0;
+    else i = Math.max(0, Math.min(list.length - 1, i + delta));
+    applyOption(list[i]);
+    try { list[i].scrollIntoView({ block: 'nearest' }); } catch (_) {}
+  }
+
+  // 點選項 → 套用並關閉
   opts.forEach(o => {
     o.addEventListener('click', () => {
-      const select = activeSelect();
-      if (!select) return;
-      // 預售模式點到(被隱藏的)10% 不處理
-      if (isPreview() && o.dataset.value === '0.10') return;
-      select.value = o.dataset.value;
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-      // 預售的 select change 不一定有綁 calc,直接補呼叫
-      if (isPreview()) {
-        if (typeof window.calcPresale === 'function') window.calcPresale();
-        if (typeof window.savePresaleState === 'function') window.savePresaleState();
-      }
-      syncSelected();
-      setTimeout(close, 120);
+      if (applyOption(o)) setTimeout(close, 120);
     });
   });
 
-  // ESC 關
+  // ESC 關;↑↓ 移動選擇;Enter / 空白鍵確認關閉
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && sheet.classList.contains('show')) close();
+    if (!sheet.classList.contains('show')) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveSelection(1);
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveSelection(-1);
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      close();
+    }
   });
 
   // 初始同步一次
@@ -5981,8 +6151,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }
 
   function openKb(input){
+    if (!input || !canOpenKb(input)) return;
     // 先關掉前一格的高亮
-    document.querySelectorAll('.dash-input.ck-active')
+    document.querySelectorAll('.ck-active')
       .forEach(el => el.classList.remove('ck-active'));
     targetInput = input;
     // 記住原本的 type 與原值(若使用者沒輸入就關閉,要還原原值)
@@ -5995,11 +6166,14 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     input.type = 'text';
     input.value = '';
     input.classList.add('ck-active');
+    // 百分比外框(含 %)整顆一起高亮,避免只框住數字看起來不完整
+    const pctWrap = input.closest('.pg-pct-input, .pg-rate-tag-edit, .pg-kpi-edit');
+    if (pctWrap) pctWrap.classList.add('ck-active');
     backdrop.classList.add('show');
     kb.classList.add('show');
     // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
-    scrollIntoView(input);
+    scrollIntoView(pctWrap || input);
   }
 
   // 把目前 expr 算好寫回欄位,並觸發計算流程
@@ -6014,6 +6188,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const v = evalExpr(expr);
       finalVal = (v !== null) ? fmtNum(v) : '';
     }
+    // 貸款成數不得超過 100%
+    if (targetInput.id === 'pt_loan_rate' && finalVal !== '') {
+      const lv = parseFloat(finalVal);
+      if (!isNaN(lv)) finalVal = String(Math.min(100, Math.max(0, lv)));
+    }
     // 還原欄位原本的 type
     const origType = targetInput.dataset.ckOrigType || 'number';
     targetInput.type = origType;
@@ -6022,14 +6201,36 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     targetInput.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
+  function clearCkActive(){
+    document.querySelectorAll('.ck-active').forEach(el => el.classList.remove('ck-active'));
+  }
+
   function closeKb(){
     commitToField();
-    if (targetInput) targetInput.classList.remove('ck-active');
+    clearCkActive();
     backdrop.classList.remove('show');
+    // 先播下滑動畫,底部 padding 等動畫結束再清,避免收合時整頁猛跳
     kb.classList.remove('show');
-    document.body.style.paddingBottom = '';
     targetInput = null;
     expr = '';
+    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
+  }
+
+  // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
+  function cancelKb(){
+    if (!kb.classList.contains('show')) return;
+    if (targetInput) {
+      const origType = targetInput.dataset.ckOrigType || 'number';
+      targetInput.type = origType;
+      targetInput.value = targetInput.dataset.ckOrigValue || '';
+    }
+    clearCkActive();
+    backdrop.classList.remove('show');
+    kb.classList.remove('show');
+    targetInput = null;
+    expr = '';
+    touched = false;
+    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
   }
 
   // 按鍵處理
@@ -6054,6 +6255,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       expr += k;
     }
     else { expr += k; }   // 數字 0-9
+    // 貸款成數:輸入過程超過 100 立即壓回上限
+    if (targetInput && targetInput.id === 'pt_loan_rate') {
+      const lv = evalExpr(expr);
+      if (lv !== null && lv > 100) expr = '100';
+      if (lv !== null && lv < 0) expr = '0';
+    }
     refreshField();
   }
 
@@ -6075,45 +6282,215 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   })();
 
   kb.querySelectorAll('.ck-key').forEach(btn => {
-    btn.addEventListener('click', () => pressKey(btn.dataset.k));
+    btn.addEventListener('click', (e) => {
+      if (kb._ignoreClick) { e.preventDefault(); e.stopPropagation(); return; }
+      pressKey(btn.dataset.k);
+    });
   });
   // 完成按鈕(class 是 ck-done,不在 .ck-key 內)
   const doneBtn = kb.querySelector('.ck-done');
-  if (doneBtn) doneBtn.addEventListener('click', () => pressKey('done'));
+  if (doneBtn) doneBtn.addEventListener('click', (e) => {
+    if (kb._ignoreClick) { e.preventDefault(); e.stopPropagation(); return; }
+    pressKey('done');
+  });
 
-  // === 鍵盤按鍵:按下瞬間的即時回饋(視覺按下態 + 輕震 8ms)===
-  // 這是 App 自繪鍵盤,沒有系統按鍵音/震動,故由此補上「按到了」的回饋。
-  // 用 pointerdown 在按下當下即時觸發(比 click 早、比 :active 可靠);震動 iOS 自動略過。
+  // === 點按 vs 滑動收起 ===
+  // 點擊:延遲後才顯示按下態 + 震動 + 輸入
+  // 滑動:清掉按下態、不震動、不輸入,達門檻則收起鍵盤
   const kbKeysEl = document.getElementById('calcKbKeys');
-  if (kbKeysEl) {
-    kbKeysEl.addEventListener('pointerdown', e => {
-      const btn = e.target.closest('.ck-key, .ck-done');
-      if (!btn) return;
-      btn.classList.add('ck-pressed');
-      try { if (navigator.vibrate) navigator.vibrate(8); } catch(_){}
-    });
-    const clearPressed = () => kbKeysEl.querySelectorAll('.ck-pressed')
-      .forEach(b => b.classList.remove('ck-pressed'));
-    kbKeysEl.addEventListener('pointerup', clearPressed);
-    kbKeysEl.addEventListener('pointercancel', clearPressed);
-    kbKeysEl.addEventListener('pointerleave', clearPressed);
-  }
-  backdrop.addEventListener('click', closeKb);
+  const clearPressed = () => {
+    if (!kbKeysEl) return;
+    kbKeysEl.querySelectorAll('.ck-pressed').forEach(b => b.classList.remove('ck-pressed'));
+  };
+  let _kbPtr = null; // { id, x0, y0, btn, moved, timer }
+  const KB_MOVE_TH = 10;   // 超過此移動 → 不當點擊
+  const KB_SWIPE_TH = 50;  // 超過此位移 → 收起鍵盤
+  const KB_PRESS_DELAY = 70;
 
-  // 滑動退出:左滑 / 右滑 / 下滑都關閉
-  let touchX = 0, touchY = 0;
-  kb.addEventListener('touchstart', e => {
-    if (e.touches.length !== 1) return;
-    touchX = e.touches[0].clientX;
-    touchY = e.touches[0].clientY;
+  function _kbClearPtr(){
+    if (_kbPtr && _kbPtr.timer) clearTimeout(_kbPtr.timer);
+    _kbPtr = null;
+  }
+  function _kbArmPress(btn){
+    if (!btn) return;
+    btn.classList.add('ck-pressed');
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch(_){}
+  }
+
+  kb.addEventListener('pointerdown', (e) => {
+    if (!kb.classList.contains('show')) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    const btn = e.target.closest ? e.target.closest('.ck-key, .ck-done') : null;
+    _kbClearPtr();
+    kb._ignoreClick = false;
+    _kbPtr = {
+      id: e.pointerId,
+      x0: e.clientX,
+      y0: e.clientY,
+      btn,
+      moved: false,
+      timer: null
+    };
+    if (btn) {
+      // 延遲顯示按下:若中途滑走就不顯示
+      _kbPtr.timer = setTimeout(() => {
+        if (_kbPtr && !_kbPtr.moved && _kbPtr.btn === btn) _kbArmPress(btn);
+      }, KB_PRESS_DELAY);
+    }
+  });
+  kb.addEventListener('pointermove', (e) => {
+    if (!_kbPtr || e.pointerId !== _kbPtr.id) return;
+    const dx = e.clientX - _kbPtr.x0;
+    const dy = e.clientY - _kbPtr.y0;
+    if (!_kbPtr.moved && (Math.abs(dx) > KB_MOVE_TH || Math.abs(dy) > KB_MOVE_TH)) {
+      _kbPtr.moved = true;
+      if (_kbPtr.timer) { clearTimeout(_kbPtr.timer); _kbPtr.timer = null; }
+      clearPressed(); // 滑動中絕不顯示按鍵壓下
+    }
+  });
+  function _kbFinishPtr(e, cancelled){
+    if (!_kbPtr || e.pointerId !== _kbPtr.id) return;
+    if (_kbPtr.timer) { clearTimeout(_kbPtr.timer); _kbPtr.timer = null; }
+    const dx = e.clientX - _kbPtr.x0;
+    const dy = e.clientY - _kbPtr.y0;
+    const swiped = Math.abs(dx) > KB_SWIPE_TH || dy > KB_SWIPE_TH;
+    const wasTap = !_kbPtr.moved && !cancelled;
+    const btn = _kbPtr.btn;
+    clearPressed();
+    if (cancelled) {
+      _kbClearPtr();
+      return;
+    }
+    if (swiped) {
+      // 下滑/左右滑 = 收起;抑制後續 click,避免誤觸按鍵
+      kb._ignoreClick = true;
+      _kbClearPtr();
+      closeKb();
+      return;
+    }
+    if (_kbPtr.moved) {
+      // 有移動但未達收起門檻:不當點擊
+      kb._ignoreClick = true;
+      _kbClearPtr();
+      return;
+    }
+    if (wasTap && btn) {
+      // 極短點擊可能還沒撐到 delay → 補一下按下回饋
+      _kbArmPress(btn);
+      setTimeout(clearPressed, 90);
+    }
+    _kbClearPtr();
+  }
+  kb.addEventListener('pointerup', (e) => _kbFinishPtr(e, false));
+  kb.addEventListener('pointercancel', (e) => _kbFinishPtr(e, true));
+  // 滑動後產生的 click 一律吃掉
+  kb.addEventListener('click', (e) => {
+    if (!kb._ignoreClick) return;
+    e.preventDefault();
+    e.stopPropagation();
+    kb._ignoreClick = false;
+  }, true);
+  // 點外面關閉:不擋滑動(遮罩已 pointer-events:none)。
+  // 用「有明顯移動就不當點擊」避免滑頁時誤關;點到可輸入欄位則交給換欄,不關閉。
+  let _kbTouchMoved = false;
+  let _kbTouchY0 = 0;
+  document.addEventListener('touchstart', (e) => {
+    if (!kb.classList.contains('show') || !e.touches || !e.touches[0]) return;
+    _kbTouchMoved = false;
+    _kbTouchY0 = e.touches[0].clientY;
   }, { passive: true });
-  kb.addEventListener('touchend', e => {
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchX;
-    const dy = t.clientY - touchY;
-    const TH = 55;
-    if (Math.abs(dx) > TH || dy > TH) closeKb();
+  document.addEventListener('touchmove', (e) => {
+    if (!kb.classList.contains('show') || !e.touches || !e.touches[0]) return;
+    if (Math.abs(e.touches[0].clientY - _kbTouchY0) > 12) _kbTouchMoved = true;
   }, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (!kb.classList.contains('show')) return;
+    if (_kbTouchMoved) { _kbTouchMoved = false; return; }
+    if (kb.contains(e.target)) return;
+    // 點另一個可輸入欄 → 只換欄、不關閉(一次點擊即可)
+    if (e.target.closest && e.target.closest('.ck-bind, .dash-input, .pt-input, .dash-input-wrap, .pg-pct-input, .pg-rate-tag-edit, .pg-kpi-edit, .lockable-wrap')) {
+      return;
+    }
+    closeKb();
+  });
+
+  // 實體鍵盤 → 對應軟體鍵盤按鍵(含按下視覺回饋)
+  function mapPhysicalKey(e){
+    if (e.ctrlKey || e.metaKey || e.altKey) return null;
+    const k = e.key;
+    const code = e.code;
+    if (k === 'Escape') return { action: 'cancel' };
+    if (k === 'Enter' || code === 'NumpadEnter') return { action: 'press', k: 'done' };
+    if (k === 'Backspace') return { action: 'press', k: 'back' };
+    if (k === 'Delete') return { action: 'press', k: 'C' };
+    if (k === 'c' || k === 'C') return { action: 'press', k: 'C' };
+    if (k === '=' || code === 'Equal') return { action: 'press', k: '=' };
+    if (k === '.' || code === 'NumpadDecimal' || k === 'Decimal') return { action: 'press', k: '.' };
+    if (k === '+' || code === 'NumpadAdd') return { action: 'press', k: '+' };
+    if (k === '-' || code === 'NumpadSubtract') return { action: 'press', k: '-' };
+    if (k === '*' || code === 'NumpadMultiply') return { action: 'press', k: '*' };
+    if (k === '/' || code === 'NumpadDivide') return { action: 'press', k: '/' };
+    if (/^[0-9]$/.test(k)) return { action: 'press', k: k };
+    // 少數環境 Numpad 只給 code
+    if (/^Numpad([0-9])$/.test(code)) return { action: 'press', k: code.slice(-1) };
+    return null;
+  }
+  function flashSoftKey(dataK){
+    if (!kbKeysEl || dataK == null) return null;
+    const sel = dataK === 'done'
+      ? '.ck-done'
+      : '.ck-key[data-k="' + dataK + '"]';
+    const btn = kb.querySelector(sel);
+    if (!btn) return null;
+    btn.classList.add('ck-pressed');
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch(_){}
+    return btn;
+  }
+  const physPressed = new Map(); // code → button
+  // Tab 切換會在欄位清單定義後掛上(見下方 switchKbField)
+  let switchKbField = null;
+  document.addEventListener('keydown', (e) => {
+    if (!kb.classList.contains('show')) return;
+    // Tab / Shift+Tab:改綁下一格,避免只動瀏覽器焦點、輸入仍寫入舊欄位
+    if (e.key === 'Tab' && typeof switchKbField === 'function') {
+      e.preventDefault();
+      e.stopPropagation();
+      switchKbField(e.shiftKey ? -1 : 1);
+      return;
+    }
+    const mapped = mapPhysicalKey(e);
+    if (!mapped) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (mapped.action === 'cancel') {
+      cancelKb();
+      return;
+    }
+    // 長按重複輸入(數字/退格)允許;首次才閃燈,避免狂閃
+    if (!e.repeat) {
+      const btn = flashSoftKey(mapped.k);
+      if (btn) physPressed.set(e.code || e.key, btn);
+    }
+    pressKey(mapped.k);
+  });
+  function clearPhysPressed(e){
+    const key = e && (e.code || e.key);
+    if (key && physPressed.has(key)) {
+      const btn = physPressed.get(key);
+      if (btn) btn.classList.remove('ck-pressed');
+      physPressed.delete(key);
+      return;
+    }
+    physPressed.forEach(btn => btn.classList.remove('ck-pressed'));
+    physPressed.clear();
+  }
+  document.addEventListener('keyup', (e) => {
+    if (!kb.classList.contains('show') && physPressed.size === 0) return;
+    clearPhysPressed(e);
+  });
+  window.addEventListener('blur', () => clearPhysPressed());
+
+  // 滑動退出已併入上方 pointer 手勢(點按 vs 滑動),不再另綁 touchend
 
   // === 綁定欄位 ===
   // 成屋版 dashboard
@@ -6152,13 +6529,80 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     'p_pt_agent_other'                          // 預售版
   ]);
 
+  // 欄位是否真的展開可見(收合的成本明細 / 公式流程 / 三方明細不可 Tab)
+  function isFieldVisibleForKb(el){
+    if (!el || !el.isConnected) return false;
+    if (el.closest('.tab-panels.hidden')) return false;
+    const tabContent = el.closest('.tab-content');
+    if (tabContent && !tabContent.classList.contains('active')) return false;
+    const partyContent = el.closest('.party-content');
+    if (partyContent && !partyContent.classList.contains('active')) return false;
+    const collapse = el.closest('.collapse-section');
+    if (collapse && !collapse.classList.contains('open')) return false;
+    let p = el;
+    while (p && p !== document.documentElement) {
+      const st = window.getComputedStyle(p);
+      if (st.display === 'none' || st.visibility === 'hidden') return false;
+      p = p.parentElement;
+    }
+    const r = el.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return false;
+    // 被 overflow:hidden 祖先裁切到看不見(例如 max-height:0 的收合區)
+    p = el.parentElement;
+    while (p && p !== document.body) {
+      const st = window.getComputedStyle(p);
+      const oy = st.overflowY || st.overflow;
+      const ox = st.overflowX || st.overflow;
+      if (oy === 'hidden' || oy === 'auto' || oy === 'scroll' || ox === 'hidden') {
+        const pr = p.getBoundingClientRect();
+        if (pr.height > 0 && (r.bottom <= pr.top + 1 || r.top >= pr.bottom - 1)) return false;
+        if (pr.width > 0 && (r.right <= pr.left + 1 || r.left >= pr.right - 1)) return false;
+      }
+      p = p.parentElement;
+    }
+    return true;
+  }
+
   // 判斷某欄位是否能開鍵盤
   function canOpenKb(el){
     if (!el) return false;
     if (DISPLAY_ONLY.has(el.id)) return false;     // 純顯示欄位
     if (el.classList.contains('is-locked')) return false;  // 鎖定中
+    if (!isFieldVisibleForKb(el)) return false;
     return true;
   }
+
+  function getTabbableKbFields(){
+    const isPrev = document.body.classList.contains('is-preview');
+    const order = isPrev
+      ? [...PRESALE_DASH, ...PRESALE_TAB, 'p_pt_agent_other']
+      : [...READY_DASH, ...READY_TAB, 'pt_loan_rate', 'pt_agent_other'];
+    const list = [];
+    order.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && canOpenKb(el)) list.push(el);
+    });
+    return list;
+  }
+
+  // Tab 時提交目前欄位,改綁下一格(軟體鍵盤 target 一併跟著換)
+  switchKbField = function(delta){
+    const list = getTabbableKbFields();
+    if (!list.length) return;
+    let i = targetInput ? list.indexOf(targetInput) : -1;
+    if (i < 0) i = 0;
+    else i = (i + delta + list.length) % list.length;
+    const next = list[i];
+    if (!next || next === targetInput) return;
+    const nextId = next.id;
+    commitToField(); // 可能觸發重繪,故用 id 重新取節點
+    const nextEl = document.getElementById(nextId);
+    if (nextEl && canOpenKb(nextEl)) openKb(nextEl);
+    else {
+      const again = getTabbableKbFields();
+      if (again.length) openKb(again[0]);
+    }
+  };
 
   // 共用的「綁欄位」邏輯(設 inputmode、cursor、focus→blur、click)
   function bindFieldForKb(el){
@@ -6170,9 +6614,25 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       el.setAttribute('readonly', '');
     }
     el.style.cursor = 'pointer';
-    el.addEventListener('focus', e => { e.target.blur(); });
+    // 軟體鍵盤開啟時,不要被原生 focus/Tab 搶焦點(改由 switchKbField 處理)
+    el.addEventListener('focus', e => {
+      if (kb.classList.contains('show')) {
+        e.target.blur();
+        return;
+      }
+      e.target.blur();
+    });
     el.addEventListener('click', () => {
-      if (canOpenKb(el)) openKb(el);
+      if (!canOpenKb(el)) return;
+      // 鍵盤已開且點另一格:先提交舊值再換綁(一次點擊即可切換)
+      if (kb.classList.contains('show') && targetInput && targetInput !== el) {
+        const nextId = el.id;
+        commitToField();
+        const nextEl = document.getElementById(nextId);
+        if (nextEl && canOpenKb(nextEl)) openKb(nextEl);
+        return;
+      }
+      openKb(el);
     });
   }
 
