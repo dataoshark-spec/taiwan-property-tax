@@ -1,5 +1,5 @@
-﻿// 最小 Service Worker — 滿足 Chrome PWA 安裝條件 + 離線快取
-const CACHE = 'fwTax-v68';
+// 最小 Service Worker — 滿足 Chrome PWA 安裝條件 + 離線快取
+const CACHE = 'fwTax-v69';
 const ASSETS = [
   './',
   './index.html',

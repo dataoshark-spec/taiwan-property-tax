@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
@@ -2653,14 +2653,14 @@
   .calc-kb { --kb-accent: #1F2F2A; --kb-accent-soft: #2E4A40; }
   body.is-preview .calc-kb { --kb-accent: #1A3A5C; --kb-accent-soft: #2A4E70; }
 
-  /* 透明點擊層:只負責「點外面關閉鍵盤」,不變暗畫面 */
+  /* 不再攔截觸控:全螢幕遮罩會擋頁面滑動、並讓換欄位要點兩次 */
   .calc-kb-backdrop {
     position: fixed; inset: 0;
     background: transparent;
-    opacity: 0; pointer-events: none;
+    opacity: 0; pointer-events: none !important;
     z-index: 998;
   }
-  .calc-kb-backdrop.show { opacity: 1; pointer-events: auto; }
+  .calc-kb-backdrop.show { opacity: 0; pointer-events: none !important; }
 
   .calc-kb {
     position: fixed;
@@ -3372,7 +3372,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713N
+    1150713O
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6307,7 +6307,29 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kbKeysEl.addEventListener('pointercancel', clearPressed);
     kbKeysEl.addEventListener('pointerleave', clearPressed);
   }
-  backdrop.addEventListener('click', closeKb);
+  // 點外面關閉:不擋滑動(遮罩已 pointer-events:none)。
+  // 用「有明顯移動就不當點擊」避免滑頁時誤關;點到可輸入欄位則交給換欄,不關閉。
+  let _kbTouchMoved = false;
+  let _kbTouchY0 = 0;
+  document.addEventListener('touchstart', (e) => {
+    if (!kb.classList.contains('show') || !e.touches || !e.touches[0]) return;
+    _kbTouchMoved = false;
+    _kbTouchY0 = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!kb.classList.contains('show') || !e.touches || !e.touches[0]) return;
+    if (Math.abs(e.touches[0].clientY - _kbTouchY0) > 12) _kbTouchMoved = true;
+  }, { passive: true });
+  document.addEventListener('click', (e) => {
+    if (!kb.classList.contains('show')) return;
+    if (_kbTouchMoved) { _kbTouchMoved = false; return; }
+    if (kb.contains(e.target)) return;
+    // 點另一個可輸入欄 → 只換欄、不關閉(一次點擊即可)
+    if (e.target.closest && e.target.closest('.ck-bind, .dash-input, .pt-input, .dash-input-wrap, .pg-pct-input, .pg-rate-tag-edit, .pg-kpi-edit, .lockable-wrap')) {
+      return;
+    }
+    closeKb();
+  });
 
   // 實體鍵盤 → 對應軟體鍵盤按鍵(含按下視覺回饋)
   function mapPhysicalKey(e){
@@ -6531,7 +6553,16 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       e.target.blur();
     });
     el.addEventListener('click', () => {
-      if (canOpenKb(el)) openKb(el);
+      if (!canOpenKb(el)) return;
+      // 鍵盤已開且點另一格:先提交舊值再換綁(一次點擊即可切換)
+      if (kb.classList.contains('show') && targetInput && targetInput !== el) {
+        const nextId = el.id;
+        commitToField();
+        const nextEl = document.getElementById(nextId);
+        if (nextEl && canOpenKb(nextEl)) openKb(nextEl);
+        return;
+      }
+      openKb(el);
     });
   }
 
