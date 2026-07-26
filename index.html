@@ -2662,26 +2662,26 @@
   }
   .calc-kb-backdrop.show { opacity: 0; pointer-events: none !important; }
 
-  /* 收合只靠 transform(與 B 相同);不要用 visibility:hidden,否則關鍵盤會瞬間消失、感覺很卡 */
+  /* 寬度跟軟體欄位一致(置中、max 720×scale);收合只靠 transform,不要用 visibility:hidden */
   .calc-kb {
     position: fixed;
-    left: 0;
-    right: 0;
+    left: 50%;
+    right: auto;
     bottom: 0;
-    width: 100%;
-    max-width: 100%;
+    width: min(100%, calc(720px * var(--app-scale)));
+    max-width: min(100%, calc(720px * var(--app-scale)));
     background: #F2F2EE;
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
     padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-    transform: translateY(110%);
+    transform: translateX(-50%) translateY(110%);
     transition: transform .26s cubic-bezier(.22,.61,.36,1);
     z-index: 999;
     touch-action: none;
     pointer-events: none;
   }
   .calc-kb.show {
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
     pointer-events: auto;
   }
 
@@ -3369,7 +3369,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713R
+    1150713S
   </div>
 </div>
 </div><!-- /.app-shell -->
