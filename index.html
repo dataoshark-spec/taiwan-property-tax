@@ -1,10 +1,40 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1F2F2A">
 <title>房地合一稅 2.0</title>
+<!-- 桌面略放大(~1.2倍):比 D 稍大,但不拉滿全螢幕 -->
+<script>
+(function(){
+  var DESIGN = 720, MIN_W = 800, SCALE = 1.2;
+  function applyDesktopScale(){
+    var z = window.innerWidth >= MIN_W ? SCALE : 1;
+    document.documentElement.style.setProperty('--app-scale', String(z));
+    var shell = document.getElementById('appShell');
+    if (document.body) document.body.classList.toggle('is-app-scaled', z > 1);
+    if (!shell) return;
+    if (z > 1) {
+      shell.style.width = DESIGN + 'px';
+      shell.style.maxWidth = DESIGN + 'px';
+      shell.style.marginBottom = '';
+      var h = shell.scrollHeight;
+      shell.style.marginBottom = ((z - 1) * h) + 'px';
+    } else {
+      shell.style.width = '';
+      shell.style.maxWidth = '';
+      shell.style.marginBottom = '';
+    }
+  }
+  window.__applyDesktopScale = applyDesktopScale;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyDesktopScale);
+  } else {
+    applyDesktopScale();
+  }
+})();
+</script>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -92,6 +122,19 @@
     transform: translateX(-50%) translateY(0);
   }
   .container { max-width: 720px; margin: 0 auto; padding: 0 0 40px; }
+
+  /* 軟體實際寬度:整欄置中;桌面以 --app-scale 略放大 */
+  :root { --app-scale: 1; }
+  .app-shell {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    transform: scale(var(--app-scale));
+    transform-origin: top center;
+  }
+  body.is-app-scaled { overflow-x: hidden; }
+  body.is-app-scaled .sticky-top { position: relative; }
+  body.is-app-scaled .app-shell .container { max-width: none; }
 
   /* 防呆提示列 */
   .safety-bar {
@@ -2620,17 +2663,29 @@
   .calc-kb-backdrop.show { opacity: 1; pointer-events: auto; }
 
   .calc-kb {
-    position: fixed; left: 0; right: 0; bottom: 0;
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: 0;
+    /* 寬度跟放大後的軟體一致;收合時不用 scale,避免底部露出握把 */
+    width: min(100%, calc(720px * var(--app-scale)));
+    max-width: min(100%, calc(720px * var(--app-scale)));
     background: #F2F2EE;
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -6px 24px rgba(0,0,0,0.18);
     padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
-    transform: translateY(110%);
+    transform: translateX(-50%) translateY(110%);
     transition: transform .26s cubic-bezier(.22,.61,.36,1);
     z-index: 999;
     touch-action: none;
+    visibility: hidden;
+    pointer-events: none;
   }
-  .calc-kb.show { transform: translateY(0); }
+  .calc-kb.show {
+    transform: translateX(-50%) translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
 
   .calc-kb-grip {
     width: 38px; height: 4px; border-radius: 2px;
@@ -2754,6 +2809,7 @@
   <button class="install-banner-x" id="installDismiss" type="button" aria-label="關閉">×</button>
 </div>
 
+<div class="app-shell" id="appShell">
 <div class="sticky-top">
   <div class="header">
     <div class="header-text">
@@ -2801,36 +2857,6 @@
     <button class="ver-btn" data-ver="preview" type="button">預售版</button>
   </div>
 </div>
-
-<div class="toast" id="toast">已清空,可以開始輸入</div>
-
-<!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
-<div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
-<div class="calc-kb" id="calcKb">
-  <div class="calc-kb-grip"></div>
-  <div class="calc-kb-keys" id="calcKbKeys">
-    <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
-    <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
-    <button type="button" class="ck-key ck-fn ck-swap" data-k="swap" title="運算鍵左右切換">⇄</button>
-    <button type="button" class="ck-key ck-op ck-div" data-k="/">÷</button>
-    <button type="button" class="ck-key ck-num ck-7" data-k="7">7</button>
-    <button type="button" class="ck-key ck-num ck-8" data-k="8">8</button>
-    <button type="button" class="ck-key ck-num ck-9" data-k="9">9</button>
-    <button type="button" class="ck-key ck-op ck-mul" data-k="*">×</button>
-    <button type="button" class="ck-key ck-num ck-4" data-k="4">4</button>
-    <button type="button" class="ck-key ck-num ck-5" data-k="5">5</button>
-    <button type="button" class="ck-key ck-num ck-6" data-k="6">6</button>
-    <button type="button" class="ck-key ck-op ck-sub" data-k="-">−</button>
-    <button type="button" class="ck-key ck-num ck-1" data-k="1">1</button>
-    <button type="button" class="ck-key ck-num ck-2" data-k="2">2</button>
-    <button type="button" class="ck-key ck-num ck-3" data-k="3">3</button>
-    <button type="button" class="ck-key ck-op ck-add" data-k="+">+</button>
-    <button type="button" class="ck-key ck-num ck-zero" data-k="0">0</button>
-    <button type="button" class="ck-key ck-num ck-dot" data-k=".">.</button>
-    <button type="button" class="ck-key ck-fn ck-eq" data-k="=">=</button>
-    <button type="button" class="ck-done" data-k="done">完成</button>
-  </div>
-  </div>
 
 <div class="container">
 
@@ -3301,9 +3327,40 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713B
+    1150713G
   </div>
 </div>
+</div><!-- /.app-shell -->
+
+<div class="toast" id="toast">已清空,可以開始輸入</div>
+
+<!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
+<div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
+<div class="calc-kb" id="calcKb">
+  <div class="calc-kb-grip"></div>
+  <div class="calc-kb-keys" id="calcKbKeys">
+    <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
+    <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
+    <button type="button" class="ck-key ck-fn ck-swap" data-k="swap" title="運算鍵左右切換">⇄</button>
+    <button type="button" class="ck-key ck-op ck-div" data-k="/">÷</button>
+    <button type="button" class="ck-key ck-num ck-7" data-k="7">7</button>
+    <button type="button" class="ck-key ck-num ck-8" data-k="8">8</button>
+    <button type="button" class="ck-key ck-num ck-9" data-k="9">9</button>
+    <button type="button" class="ck-key ck-op ck-mul" data-k="*">×</button>
+    <button type="button" class="ck-key ck-num ck-4" data-k="4">4</button>
+    <button type="button" class="ck-key ck-num ck-5" data-k="5">5</button>
+    <button type="button" class="ck-key ck-num ck-6" data-k="6">6</button>
+    <button type="button" class="ck-key ck-op ck-sub" data-k="-">−</button>
+    <button type="button" class="ck-key ck-num ck-1" data-k="1">1</button>
+    <button type="button" class="ck-key ck-num ck-2" data-k="2">2</button>
+    <button type="button" class="ck-key ck-num ck-3" data-k="3">3</button>
+    <button type="button" class="ck-key ck-op ck-add" data-k="+">+</button>
+    <button type="button" class="ck-key ck-num ck-zero" data-k="0">0</button>
+    <button type="button" class="ck-key ck-num ck-dot" data-k=".">.</button>
+    <button type="button" class="ck-key ck-fn ck-eq" data-k="=">=</button>
+    <button type="button" class="ck-done" data-k="done">完成</button>
+  </div>
+  </div>
 
 <!-- ===== 自訂級距選單 ===== -->
 <div class="rate-sheet-mask" id="rateSheetMask"></div>
@@ -4448,6 +4505,7 @@ document.addEventListener('mouseup', (e) => {
 
 // === 自動儲存 / 還原機制 ===
 window.addEventListener('resize', () => {
+  if (typeof window.__applyDesktopScale === 'function') window.__applyDesktopScale();
   if (typeof autoFitDashNumbers === 'function') autoFitDashNumbers();
   if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers();
   if (typeof autoFitBannerNumbers === 'function') autoFitBannerNumbers();
@@ -6032,6 +6090,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
   }
 
+  // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
+  function cancelKb(){
+    if (!kb.classList.contains('show')) return;
+    if (targetInput) {
+      const origType = targetInput.dataset.ckOrigType || 'number';
+      targetInput.type = origType;
+      targetInput.value = targetInput.dataset.ckOrigValue || '';
+      targetInput.classList.remove('ck-active');
+    }
+    backdrop.classList.remove('show');
+    kb.classList.remove('show');
+    document.body.style.paddingBottom = '';
+    targetInput = null;
+    expr = '';
+    touched = false;
+  }
+
   // 按鍵處理
   function pressKey(k){
     if (k === '' || k == null) return;
@@ -6099,6 +6174,73 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kbKeysEl.addEventListener('pointerleave', clearPressed);
   }
   backdrop.addEventListener('click', closeKb);
+
+  // 實體鍵盤 → 對應軟體鍵盤按鍵(含按下視覺回饋)
+  function mapPhysicalKey(e){
+    if (e.ctrlKey || e.metaKey || e.altKey) return null;
+    const k = e.key;
+    const code = e.code;
+    if (k === 'Escape') return { action: 'cancel' };
+    if (k === 'Enter' || code === 'NumpadEnter') return { action: 'press', k: 'done' };
+    if (k === 'Backspace') return { action: 'press', k: 'back' };
+    if (k === 'Delete') return { action: 'press', k: 'C' };
+    if (k === 'c' || k === 'C') return { action: 'press', k: 'C' };
+    if (k === '=' || code === 'Equal') return { action: 'press', k: '=' };
+    if (k === '.' || code === 'NumpadDecimal' || k === 'Decimal') return { action: 'press', k: '.' };
+    if (k === '+' || code === 'NumpadAdd') return { action: 'press', k: '+' };
+    if (k === '-' || code === 'NumpadSubtract') return { action: 'press', k: '-' };
+    if (k === '*' || code === 'NumpadMultiply') return { action: 'press', k: '*' };
+    if (k === '/' || code === 'NumpadDivide') return { action: 'press', k: '/' };
+    if (/^[0-9]$/.test(k)) return { action: 'press', k: k };
+    // 少數環境 Numpad 只給 code
+    if (/^Numpad([0-9])$/.test(code)) return { action: 'press', k: code.slice(-1) };
+    return null;
+  }
+  function flashSoftKey(dataK){
+    if (!kbKeysEl || dataK == null) return null;
+    const sel = dataK === 'done'
+      ? '.ck-done'
+      : '.ck-key[data-k="' + dataK + '"]';
+    const btn = kb.querySelector(sel);
+    if (!btn) return null;
+    btn.classList.add('ck-pressed');
+    try { if (navigator.vibrate) navigator.vibrate(8); } catch(_){}
+    return btn;
+  }
+  const physPressed = new Map(); // code → button
+  document.addEventListener('keydown', (e) => {
+    if (!kb.classList.contains('show')) return;
+    const mapped = mapPhysicalKey(e);
+    if (!mapped) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (mapped.action === 'cancel') {
+      cancelKb();
+      return;
+    }
+    // 長按重複輸入(數字/退格)允許;首次才閃燈,避免狂閃
+    if (!e.repeat) {
+      const btn = flashSoftKey(mapped.k);
+      if (btn) physPressed.set(e.code || e.key, btn);
+    }
+    pressKey(mapped.k);
+  });
+  function clearPhysPressed(e){
+    const key = e && (e.code || e.key);
+    if (key && physPressed.has(key)) {
+      const btn = physPressed.get(key);
+      if (btn) btn.classList.remove('ck-pressed');
+      physPressed.delete(key);
+      return;
+    }
+    physPressed.forEach(btn => btn.classList.remove('ck-pressed'));
+    physPressed.clear();
+  }
+  document.addEventListener('keyup', (e) => {
+    if (!kb.classList.contains('show') && physPressed.size === 0) return;
+    clearPhysPressed(e);
+  });
+  window.addEventListener('blur', () => clearPhysPressed());
 
   // 滑動退出:左滑 / 右滑 / 下滑都關閉
   let touchX = 0, touchY = 0;
