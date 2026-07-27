@@ -3401,7 +3401,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713T
+    1150713U
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6783,6 +6783,33 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   ['flowSection','partySection'].forEach(function(id){ var s=document.getElementById(id); if(s) s.classList.remove('open'); });
 })();
 
+
+// 縮小／切回時 Chrome 會還原欄位並留下文字選取(藍底);僅 blur 清不掉 Range
+(function(){
+  function clearResumeSelection(){
+    try {
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && typeof ae.blur === 'function') {
+        ae.blur();
+      }
+    } catch (e) {}
+    try {
+      var sel = window.getSelection && window.getSelection();
+      if (sel && sel.removeAllRanges) sel.removeAllRanges();
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'hidden') {
+      clearResumeSelection();
+    } else if (document.visibilityState === 'visible') {
+      clearResumeSelection();
+      requestAnimationFrame(clearResumeSelection);
+      setTimeout(clearResumeSelection, 0);
+      setTimeout(clearResumeSelection, 50);
+    }
+  });
+  window.addEventListener('pageshow', clearResumeSelection);
+})();
 
 </script>
 </body>
