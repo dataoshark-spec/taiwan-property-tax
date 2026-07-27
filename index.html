@@ -764,6 +764,41 @@
     user-select: none;
     -webkit-touch-callout: none;
   }
+  /* 即使瀏覽器仍建立選取 Range,畫面也不顯示藍/灰選取底 */
+  .dash-input::selection,
+  .dash-display::selection,
+  .input-table input::selection,
+  .pt-input::selection,
+  .pt-input-pct::selection,
+  .profit-banner-main-value::selection,
+  .safety-value::selection,
+  .__fit-num::selection {
+    background: transparent;
+    color: inherit;
+  }
+  .dash-input::-moz-selection,
+  .dash-display::-moz-selection,
+  .input-table input::-moz-selection,
+  .pt-input::-moz-selection,
+  .pt-input-pct::-moz-selection,
+  .profit-banner-main-value::-moz-selection,
+  .safety-value::-moz-selection,
+  .__fit-num::-moz-selection {
+    background: transparent;
+    color: inherit;
+  }
+  /* 自訂鍵盤欄位:未真正編輯時不套用 :focus 變灰/光暈(避免點外面或還原焦點閃一下) */
+  .dash-input.ck-bind:focus:not(.ck-active) {
+    box-shadow: none !important;
+  }
+  .dash-input.ck-bind.req:focus:not(.ck-active),
+  .dash-input.ck-bind.bg-light:focus:not(.ck-active) {
+    background: #FFFEF8 !important;
+  }
+  .dash-input.ck-bind.opt:focus:not(.ck-active),
+  .dash-input.ck-bind.bg-deep:focus:not(.ck-active) {
+    background: #F0EFE8 !important;
+  }
 
   /* === 欄位類別:必填(米白底深綠邊) === */
   .dash-input.req { background: #FFFEF8 !important; }
@@ -3415,7 +3450,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713V
+    1150713W
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6798,13 +6833,16 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 })();
 
 
-// 縮小／切回時 Chrome 會還原欄位並留下文字選取(藍底);僅 blur 清不掉 Range
+// 縮小／切回／點軟體外部時:清掉瀏覽器還原的焦點與文字選取(藍/灰底)
 (function(){
   function clearResumeSelection(){
     try {
       var ae = document.activeElement;
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && typeof ae.blur === 'function') {
-        ae.blur();
+        // 編輯中(自訂鍵盤開著且為目前欄位)不要強制 blur,避免打到一半被清掉
+        var kb = document.getElementById('calcKb');
+        var editing = kb && kb.classList.contains('show') && ae.classList && ae.classList.contains('ck-active');
+        if (!editing) ae.blur();
       }
     } catch (e) {}
     try {
@@ -6823,6 +6861,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }
   });
   window.addEventListener('pageshow', clearResumeSelection);
+  window.addEventListener('blur', clearResumeSelection);
+  // 點軟體欄位外(兩側空白/頁面背景)也清選取
+  document.addEventListener('pointerdown', function(e){
+    var t = e.target;
+    if (t && t.closest && t.closest('#appShell, #calcKb, .toast, .rate-sheet, .install-banner, .neg-toast')) return;
+    clearResumeSelection();
+  }, true);
 })();
 
 </script>
