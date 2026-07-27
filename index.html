@@ -750,6 +750,20 @@
   .dash-input::-webkit-outer-spin-button,
   .dash-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .dash-input:focus { outline: none; background: #FFFEF8 !important; box-shadow: 0 0 0 3px rgba(255,213,138,0.55); }
+  /* 禁止系統選取藍底(自訂鍵盤不需選字;縮小重開也不會閃選取) */
+  .dash-input,
+  .dash-display,
+  .input-table input,
+  .pt-input,
+  .pt-input-pct,
+  .profit-banner-main-value,
+  .profit-banner-side-value,
+  .safety-value,
+  .__fit-num {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 
   /* === 欄位類別:必填(米白底深綠邊) === */
   .dash-input.req { background: #FFFEF8 !important; }
@@ -3401,7 +3415,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713U
+    1150713V
   </div>
 </div>
 </div><!-- /.app-shell -->
