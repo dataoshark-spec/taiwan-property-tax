@@ -3584,7 +3584,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.08C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.08D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3667,8 +3667,34 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => Math.round(n).toLocaleString();
+// 僅供顯示截尾：吸收整數邊界附近的浮點誤差，不回寫計算值。
+// 真正有尾數時仍朝零截尾，例如 849.9999 仍為 849。
+function truncDisplayInteger(value) {
+  if (!Number.isFinite(value)) return Math.trunc(value);
+  const nearest = Math.round(value);
+  const tolerance = Number.EPSILON * Math.max(1, Math.abs(value)) * 4;
+  return Math.trunc(Math.abs(value - nearest) <= tolerance ? nearest : value);
+}
+// 三方明細的兩位「萬」顯示：先沿用原本整元規則，再以百元處理半值。
+function fmtWan2Rounded(value) {
+  const roundedYuan = Math.round(value);
+  const hundreds = Math.round(Math.abs(roundedYuan) / 100);
+  if (roundedYuan < 0 && hundreds === 0) return '-0.00';
+  return (Math.sign(roundedYuan) * hundreds / 100).toFixed(2);
+}
+// 只格式化顯示文字，保留原位數與負數四捨五入方向。
+function fmtRoundedDisplay(value, places) {
+  const scale = 10 ** places;
+  const magnitude = truncDisplayInteger(Math.abs(value) * scale + 0.5) / scale;
+  return (value < 0 ? '-' : '') + magnitude.toFixed(places);
+}
+// 公式流程沿用原百分比位數。
+function fmtFlowPercent(value) {
+  const places = value < 0.1 && value > 0 ? 1 : 0;
+  return fmtRoundedDisplay(value * 100, places) + '%';
+}
 // 無條件捨去版(專給屋主最終利潤:避免 -99.9961 四捨五入進位成 -100.00)
-const fmtWanTrunc = n => (Math.trunc(n / 100) / 100).toFixed(2);
+const fmtWanTrunc = n => (truncDisplayInteger(n / 100) / 100).toFixed(2);
 // 元轉萬、4 位小數(dashboard 副註用)
 const fmtWan4 = n => isFinite(n) ? (n / 10000).toFixed(4) : '—';
 
@@ -3861,16 +3887,16 @@ function calc() {
   if ($('cell_limit')) $('cell_limit').classList.toggle('abnormal', limitAbnormal);
   if ($('cell_final')) $('cell_final').classList.toggle('abnormal', finalAbnormal);
 
-  if ($('s_total')) setSafetyValue('s_total', (Math.trunc(totalCommission * 10000) / 100).toFixed(2) + '%');
-  if ($('s_limit')) setSafetyValue('s_limit', (Math.trunc(safetyCheck * 10000) / 100).toFixed(2) + '%');
-  if ($('s_final')) setSafetyValue('s_final', (Math.trunc(finalCommission * 10000) / 100).toFixed(2) + '%');
+  if ($('s_total')) setSafetyValue('s_total', (truncDisplayInteger(totalCommission * 10000) / 100).toFixed(2) + '%');
+  if ($('s_limit')) setSafetyValue('s_limit', (truncDisplayInteger(safetyCheck * 10000) / 100).toFixed(2) + '%');
+  if ($('s_final')) setSafetyValue('s_final', (truncDisplayInteger(finalCommission * 10000) / 100).toFixed(2) + '%');
   $('d_rate').textContent = rateSelected ? (rate * 100).toFixed(0) + '%' : '—';
   if ($('d_buyer_total')) $('d_buyer_total').textContent = fmtWanTrunc(buyerTotal);
   // 「出售可列舉」格只顯示「出售雜項+仲介費(不含土增稅)」(sellCostExclLandTax),非取大值;
   // 稅基計算仍用 sellDeductible = MAX(免稅額, 雜項+仲介),兩者刻意分離
   if ($('d_sell_ded')) $('d_sell_ded').textContent = fmtWanTrunc(sellCostExclLandTax);
   if ($('d_exempt')) $('d_exempt').textContent = fmtWanTrunc(exempt3pct);
-  if ($('d_buyer_pct')) $('d_buyer_pct').textContent = sale > 0 ? (Math.trunc((buyerFixed / sale) * 1000000) / 10000).toFixed(4) + ' %' : '— %';
+  if ($('d_buyer_pct')) $('d_buyer_pct').textContent = sale > 0 ? (truncDisplayInteger((buyerFixed / sale) * 1000000) / 10000).toFixed(4) + ' %' : '— %';
   if ($('d_seller_amt')) $('d_seller_amt').textContent = fmtWan4(agentFee);
   // 新增的小附註框
   if ($('d_buy_taxfee')) $('d_buy_taxfee').textContent = fmtWanTrunc(buyCost);
@@ -4121,7 +4147,7 @@ function autoFitBannerNumbers() {
 // === 公式流程渲染 ===
 function renderFlow(d) {
   const fmtN = n => Math.round(n).toLocaleString();
-  const pct = (n) => (n*100).toFixed(n < 0.1 && n > 0 ? 1 : 0) + '%';
+  const pct = fmtFlowPercent;
 
   const cell = (label, value, cls = '') =>
     `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v">${value}</div></div>`;
@@ -4313,14 +4339,14 @@ function renderPartyTables(d) {
 
   const fmtN = n => Math.round(n).toLocaleString();
   const fmtW4 = n => (Math.round(n) / 10000).toFixed(4);
-  const fmtW2 = n => (Math.round(n) / 10000).toFixed(2);
+  const fmtW2 = fmtWan2Rounded;
 
   // ===== 買方 =====
   const loanMissing = d.buyerLoanRate == null;
   const buyerLoan = d.sale * d.buyerLoanRate;
   const buyerSelf = d.sale - buyerLoan;
   const buyerTotal = d.sale + d.buyerFee;
-  const buyerRatePct = (d.sale > 0 ? Math.trunc((d.buyerFee / d.sale) * 10000) / 100 : 0).toFixed(2);
+  const buyerRatePct = (d.sale > 0 ? truncDisplayInteger((d.buyerFee / d.sale) * 10000) / 100 : 0).toFixed(2);
 
   const buyerHtml = `
     <div class="pg-header">買 方</div>
@@ -4364,7 +4390,7 @@ function renderPartyTables(d) {
         </div>
         <div class="pg-row">
           <div class="pg-op"></div>
-          <div class="pg-label">自備款 <span class="pg-pct-text" id="pt_self_pct">${loanMissing ? '—' : (100 - d.buyerLoanRate*100).toFixed(0) + '%'}</span></div>
+          <div class="pg-label">自備款 <span class="pg-pct-text" id="pt_self_pct">${loanMissing ? '—' : fmtRoundedDisplay(100 - d.buyerLoanRate*100, 0) + '%'}</span></div>
           <div class="pg-value" id="pt_self_amount">${loanMissing ? '—' : fmtW4(buyerSelf)}</div>
           <div class="pg-unit">萬</div>
         </div>
@@ -4409,7 +4435,7 @@ function renderPartyTables(d) {
     const editingLoan = $('pt_loan_rate') && ($('pt_loan_rate').classList.contains('ck-active') || (document.activeElement && document.activeElement.id === 'pt_loan_rate'));
     if (editingLoan && $('pt_loan_amount')) {
       $('pt_loan_amount').textContent = loanMissing ? '—' : fmtW4(buyerLoan);
-      if ($('pt_self_pct')) $('pt_self_pct').textContent = loanMissing ? '—' : (100 - d.buyerLoanRate*100).toFixed(0) + '%';
+      if ($('pt_self_pct')) $('pt_self_pct').textContent = loanMissing ? '—' : fmtRoundedDisplay(100 - d.buyerLoanRate*100, 0) + '%';
       if ($('pt_self_amount')) $('pt_self_amount').textContent = loanMissing ? '—' : fmtW4(buyerSelf);
     } else {
       $('partyBuyerBody').innerHTML = buyerHtml;
@@ -4506,7 +4532,7 @@ function renderPartyTables(d) {
       <div class="pg-final-label">最終服務費</div>
       <div class="pg-final-value" id="pt_agent_final">${fmtW4(finalAgent)}</div>
       <div class="pg-final-unit">萬</div>
-      <div class="pg-final-kpi" id="pt_agent_kpi">${(Math.trunc(finalRate*10000)/100).toFixed(2)}%</div>
+      <div class="pg-final-kpi" id="pt_agent_kpi">${(truncDisplayInteger(finalRate*10000)/100).toFixed(2)}%</div>
     </div>
   `;
   if ($('partyAgentBody')) {
@@ -4515,7 +4541,7 @@ function renderPartyTables(d) {
     const editingAgentOther = (document.activeElement && document.activeElement.id === 'pt_agent_other') || !!document.getElementById('pt_agent_other')?.classList.contains('ck-active');
     if (editingAgentOther && $('pt_agent_final')) {
       $('pt_agent_final').textContent = fmtW4(finalAgent);
-      if ($('pt_agent_kpi')) $('pt_agent_kpi').textContent = (Math.trunc(finalRate*10000)/100).toFixed(2) + '%';
+      if ($('pt_agent_kpi')) $('pt_agent_kpi').textContent = (truncDisplayInteger(finalRate*10000)/100).toFixed(2) + '%';
     } else {
       $('partyAgentBody').innerHTML = agentHtml;
     }
@@ -5116,7 +5142,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   // 依照 Excel B25-D37 預售公式: 出售價格 - 購屋價 - 取得稅費 - 出售可列舉 = 稅基 × 稅率 = 應繳稅
   function renderFlowPresale(d) {
     const fmtN = n => Math.round(n).toLocaleString();
-    const pct = (v) => (v*100).toFixed(v < 0.1 && v > 0 ? 1 : 0) + '%';
+    const pct = fmtFlowPercent;
 
     const cell = (label, value, cls = '') =>
       `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v">${value}</div></div>`;
@@ -5250,14 +5276,14 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
     const fmtN = v => Math.round(v).toLocaleString();
     const fmtW4 = v => (Math.round(v) / 10000).toFixed(4);
-    const fmtW2 = v => (Math.round(v) / 10000).toFixed(2);
+    const fmtW2 = fmtWan2Rounded;
 
     // ===== 買方 =====
     // 預售買方:成交價 + 服務費 = 總支出
     // 細項:換約款(給屋主)=換約價差, 未付款(給建商)=未付款,
     //       貸款成數/金額 by Excel D72/G72
     // 其它費用:履保費用、代書費用(F81/F84,僅顯示)
-    const buyerRatePct = (d.sale > 0 ? Math.trunc((d.buyerFee/d.sale)*10000)/100 : 0).toFixed(2);
+    const buyerRatePct = (d.sale > 0 ? truncDisplayInteger((d.buyerFee/d.sale)*10000)/100 : 0).toFixed(2);
     const buyerHtml = `
       <div class="pg-header">買 方 ( 預售 )</div>
 
@@ -5318,7 +5344,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
         <div class="pg-rows">
           <div class="pg-row">
             <div class="pg-op"></div>
-            <div class="pg-label">貸款成數 <span class="pg-pct-text">${(Math.trunc(d.loanRatePct*100)/100).toFixed(2)}%</span></div>
+            <div class="pg-label">貸款成數 <span class="pg-pct-text">${(truncDisplayInteger(d.loanRatePct*100)/100).toFixed(2)}%</span></div>
             <div class="pg-value">${fmtW2(d.loanAmt)}</div>
             <div class="pg-unit">萬</div>
           </div>
@@ -5448,7 +5474,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
           <div class="pg-final-label">剩餘服務費</div>
           <div class="pg-final-value" id="p_pt_agent_final">${fmtW4(finalAgent)}</div>
           <div class="pg-final-unit">萬</div>
-          <div class="pg-final-kpi" id="p_pt_agent_kpi">${(Math.trunc(finalRate*10000)/100).toFixed(2)}%</div>
+          <div class="pg-final-kpi" id="p_pt_agent_kpi">${(truncDisplayInteger(finalRate*10000)/100).toFixed(2)}%</div>
         </div>
       `;
       // 正在編輯仲介「其它」時只更新連動數字,不重建(避免輸入框閃爍)
@@ -5456,7 +5482,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       if (editingAgentOtherP && document.getElementById('p_pt_agent_final')) {
         document.getElementById('p_pt_agent_final').textContent = fmtW4(finalAgent);
         const kpi = document.getElementById('p_pt_agent_kpi');
-        if (kpi) kpi.textContent = (Math.trunc(finalRate*10000)/100).toFixed(2) + '%';
+        if (kpi) kpi.textContent = (truncDisplayInteger(finalRate*10000)/100).toFixed(2) + '%';
       } else {
         document.getElementById('partyAgentBody').innerHTML = agentHtmlP;
       }
@@ -5561,8 +5587,8 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 第一排 4 格
     set('p_buyer_total', fmtWanShort(buyerTotal));
     set('p_buy_taxfee', fmtWanShort(buyTaxFee));
-    set('p_paid_pct', firstPrice > 0 ? (Math.trunc(paid/firstPrice*1000000)/10000).toFixed(4) + '%' : '—');
-    set('p_unpaid_pct', firstPrice > 0 ? (Math.trunc(unpaid/firstPrice*1000000)/10000).toFixed(4) + '%' : '—');
+    set('p_paid_pct', firstPrice > 0 ? (truncDisplayInteger(paid/firstPrice*1000000)/10000).toFixed(4) + '%' : '—');
+    set('p_unpaid_pct', firstPrice > 0 ? (truncDisplayInteger(unpaid/firstPrice*1000000)/10000).toFixed(4) + '%' : '—');
 
     // 第二排:級距 + 第一手價格
     set('p_rate', rateSelectedP ? (rate*100).toFixed(0) + '%' : '—');
@@ -5573,7 +5599,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 第三排 4 格 — subnote 統一顯示 4 位小數
     const fmt4 = v => isFinite(v) ? (v/10000).toFixed(4) : '—';
     set('p_buyer_pct_amt', fmt4(buyerByPct));
-    set('p_buyer_pct', sale > 0 ? (Math.trunc(buyerFixed/sale*1000000)/10000).toFixed(4) + '%' : '—');
+    set('p_buyer_pct', sale > 0 ? (truncDisplayInteger(buyerFixed/sale*1000000)/10000).toFixed(4) + '%' : '—');
     set('p_target_now', fmt4(profit));
     set('p_seller_amt', fmt4(sellerAgentFee));
 
@@ -5612,9 +5638,9 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const sT = document.getElementById('p_s_total');
     const sL = document.getElementById('p_s_limit');
     const sF = document.getElementById('p_s_final');
-    if (sT) setSafetyValue('p_s_total', (Math.trunc(totalCommission*10000)/100).toFixed(2) + '%');
-    if (sL) setSafetyValue('p_s_limit', (Math.trunc(safetyCheck*10000)/100).toFixed(2) + '%');
-    if (sF) setSafetyValue('p_s_final', (Math.trunc(finalCommission*10000)/100).toFixed(2) + '%');
+    if (sT) setSafetyValue('p_s_total', (truncDisplayInteger(totalCommission*10000)/100).toFixed(2) + '%');
+    if (sL) setSafetyValue('p_s_limit', (truncDisplayInteger(safetyCheck*10000)/100).toFixed(2) + '%');
+    if (sF) setSafetyValue('p_s_final', (truncDisplayInteger(finalCommission*10000)/100).toFixed(2) + '%');
     const cT = document.getElementById('p_cell_total');
     const cL = document.getElementById('p_cell_limit');
     const cF = document.getElementById('p_cell_final');
