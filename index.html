@@ -1947,38 +1947,6 @@
     border-color: #C9B5DC;
   }
   .flow-cell.rate .flow-cell-v { color: #6B3FA0; }
-  /* 做法A:售價低於屋主取得時,①第一排「出售價格−屋主取得房屋價」兩格換成藍底提示 */
-  .flow-cell.flow-hint-cell {
-    flex: 3.9 1 0;
-    margin-left: 26px;
-    margin-right: 8px;
-    background: #1A3A5C !important;
-    border-color: #1A3A5C !important;
-    border-radius: 8px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 5px 10px !important;
-    overflow: visible !important;
-    box-shadow: 0 1px 3px rgba(26,58,92,0.18) !important;
-  }
-  .flow-hint-l1 {
-    font-size: 9.5px;
-    font-weight: 700;
-    color: #FFE5A8 !important;
-    line-height: 1.25;
-    white-space: nowrap;
-  }
-  .flow-hint-l2 {
-    font-size: 9px;
-    font-weight: 600;
-    color: #FFFFFF !important;
-    line-height: 1.25;
-    white-space: nowrap;
-    margin-top: 1px;
-  }
-
   /* 4 個流程列的容器 */
   .flow-stack {
     display: flex;
@@ -2035,10 +2003,6 @@
   .flow-cell.result:last-child { flex: 0 0 130px !important; }
   /* rate 格放小數字(35%, 3%, 4.0%),拿少一點 */
   .flow-cell.rate { flex: 0.7 1 0 !important; }
-  /* 預售第二排免稅比率:回到 flex 1,讓免稅額結果格對齊第3、4排 */
-  .flow-cell.rate.ratecol { flex: 1 1 0 !important; }
-  /* 賠售提示排:已付款縮窄靠右,減少空白 */
-  .flow-cell.input.paidcol { flex: 0.8 1 0 !important; }
 
   /* 標籤:小、灰、上方 */
   .flow-cell-l {
@@ -2794,7 +2758,7 @@
   .pg-row:has(.ck-active) {
     overflow: visible;
   }
-  .pg-pct-input.ck-active,
+  .pg-pct-input.ck-active:not(.loan-input-flash),
   .pg-rate-tag-edit.ck-active,
   .pg-kpi-edit.ck-active {
     background: #FFF6D6 !important;
@@ -2914,6 +2878,176 @@
 
 
   /* 使用計算機鍵盤的欄位:被點選時的視覺(沿用 focus 樣式即可,不另設) */
+  /* 第一手價格下方的靜態提示：單行置中，沿用原本小框。 */
+  .presale-dash .dash-subnote.presale-expense-note {
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    container-type: inline-size;
+  }
+  .presale-expense-note-text {
+    min-width: 0;
+    white-space: nowrap;
+    font-size: min(7px, 9cqi);
+  }
+</style>
+<style>
+/* Approved loan percentage feedback: three flashes and a same-row message. */
+.pg-pct-input.loan-input-flash{animation:loan-input-flash .65s ease-in-out 3;}
+@keyframes loan-input-flash{
+  0%,100%{background:#fff8e7;border-color:#cfb96e;box-shadow:0 0 0 2px rgba(179,145,61,.15);}
+  30%,70%{background:#ffd9d4;border-color:#bd3636;box-shadow:0 0 0 3px rgba(189,54,54,.28);}
+}
+#loanInputNotice{color:#b23732;font-size:12px;line-height:1.5;margin:0 0 6px;}
+#loanInputNotice:empty{display:none;}
+@media(prefers-reduced-motion:reduce){.pg-pct-input.loan-input-flash{animation:none;background:#ffd9d4!important;border-color:#bd3636!important;}}
+</style>
+<style>
+/* Keep the loan expression in the first row, with space outside its focus ring. */
+.loan-input-row{grid-template-columns:var(--loan-leading-space,38px) minmax(0,1fr) auto 32px;}
+.loan-input-label{display:flex;align-items:center;flex-wrap:nowrap;gap:10px;min-width:0;padding-right:6px;overflow:visible;}
+.loan-input-title{flex:0 0 auto;white-space:nowrap;}
+.loan-input-controls{display:flex;align-items:center;flex-wrap:nowrap;gap:7px;min-width:0;max-width:100%;}
+.loan-input-controls .pg-pct-input{margin-left:0;flex:0 0 auto;min-width:0;column-gap:4px;}
+#pt_loan_rate{flex:0 0 auto;min-width:0;max-width:260px;letter-spacing:0;}
+#pt_loan_rate.loan-input-draft{text-align:left;}
+#loanInputNotice{display:block;flex:0 0 auto;min-width:0;color:#b23732;font-size:clamp(11px,2.9vw,12px);font-weight:600;line-height:1.4;margin:0;white-space:nowrap;overflow-wrap:normal;}
+#loanInputNotice:empty{display:none;}
+/* In the warning state, the input and message share the entire original row. */
+.loan-input-row.loan-input-error{grid-template-columns:minmax(0,1fr);column-gap:0;}
+.loan-input-error>.pg-op,.loan-input-error>#pt_loan_amount,.loan-input-error>.pg-unit{display:none;}
+.loan-input-error .loan-input-label{grid-column:1/-1;gap:8px;padding-right:0;}
+.loan-input-error .loan-input-controls{gap:8px;}
+.loan-input-error .loan-input-title,.loan-input-error .pg-pct-input,.loan-input-error #loanInputNotice{font-size:var(--loan-alert-font,12px);}
+.loan-input-error .pg-pct-input{padding:2px 4px;column-gap:3px;}
+</style>
+<script>
+(function(){
+  let draft=false;
+  const canvas=document.createElement('canvas');
+  const context=canvas.getContext('2d');
+  function textWidth(text,el){
+    const style=getComputedStyle(el);
+    context.font=style.fontWeight+' '+style.fontSize+' '+style.fontFamily;
+    return context.measureText(text).width;
+  }
+  window.__fitLoanInput=function(nextDraft){
+    if(typeof nextDraft==='boolean')draft=nextDraft;
+    const input=document.getElementById('pt_loan_rate');
+    if(!input)return;
+    const row=input.closest('.loan-input-row');
+    if(!row || !row.offsetWidth)return;
+    const label=row.querySelector('.loan-input-label');
+    const title=row.querySelector('.loan-input-title');
+    const controls=row.querySelector('.loan-input-controls');
+    const box=input.closest('.pg-pct-input');
+    const note=document.getElementById('loanInputNotice');
+    const hasMessage=!!note.textContent;
+    const natural=Math.max(28,Math.ceil(textWidth(input.value,input))+6);
+    // Final decimal results may need a slightly wider small box to stay readable.
+    const desired=Math.min(draft?260:90,natural);
+    row.classList.toggle('loan-input-error',hasMessage);
+    row.style.setProperty('--loan-leading-space','38px');
+    if(hasMessage){
+      // An invalid loan has no amount to display. Give that space to the warning.
+      function warningRoom(){
+        const gap=parseFloat(getComputedStyle(label).columnGap);
+        const controlGap=parseFloat(getComputedStyle(controls).columnGap);
+        const chrome=box.offsetWidth-input.offsetWidth;
+        return label.clientWidth-title.offsetWidth-gap-chrome-controlGap-Math.ceil(textWidth(note.textContent,note))-2;
+      }
+      let font=12;
+      row.style.setProperty('--loan-alert-font',font+'px');
+      while(font>10 && warningRoom()<18){
+        font-=0.25;
+        row.style.setProperty('--loan-alert-font',font+'px');
+      }
+      input.style.width=Math.max(8,Math.min(24,warningRoom()))+'px';
+    }else{
+      row.style.removeProperty('--loan-alert-font');
+      const gap=10;
+      const chrome=box.offsetWidth-input.offsetWidth;
+      function availableWidth(){
+        const style=getComputedStyle(label);
+        return label.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight)-title.offsetWidth-gap;
+      }
+      let available=availableWidth();
+      const shortage=Math.max(0,28+chrome-available);
+      if(shortage>0){
+        row.style.setProperty('--loan-leading-space',Math.max(0,38-shortage)+'px');
+        available=availableWidth();
+      }
+      input.style.width=Math.min(desired,Math.max(8,available-chrome))+'px';
+    }
+    input.classList.toggle('loan-input-draft',draft);
+    input.dataset.loanDraft=draft?'true':'false';
+    input.title=input.value;
+    // No width transition: the newest digit is always visible at the width cap.
+    input.scrollLeft=draft?input.scrollWidth:0;
+    requestAnimationFrame(()=>{
+      if(!input.isConnected)return;
+      input.scrollLeft=draft?input.scrollWidth:0;
+      const keyboard=document.getElementById('calcKb');
+      if(input.classList.contains('ck-active') && keyboard.classList.contains('show')){
+        const bounds=box.getBoundingClientRect();
+        const safeTop=document.querySelector('.sticky-top').getBoundingClientRect().bottom+12;
+        const safeBottom=keyboard.getBoundingClientRect().top-24;
+        if(bounds.bottom>safeBottom || bounds.top<safeTop){
+          window.scrollBy({top:bounds.bottom-Math.max(safeTop+bounds.height,safeBottom),behavior:'instant'});
+        }
+      }
+    });
+  };
+  let resizeFrame=0;
+  window.addEventListener('resize',()=>{
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame=requestAnimationFrame(()=>window.__fitLoanInput());
+  });
+  window.addEventListener('load',()=>window.__fitLoanInput(false));
+})();
+</script>
+<script>
+window.__loanInputMessage = "";
+window.__clearLoanInputWarning = function(){
+  window.__loanInputMessage='';
+  const el=document.getElementById('pt_loan_rate');
+  const box=el && el.closest('.pg-pct-input');
+  if(box){clearTimeout(box.__loanWarningTimer);box.classList.remove('loan-input-flash');}
+  if(el)el.removeAttribute('aria-invalid');
+  const note=document.getElementById('loanInputNotice');
+  if(note)note.textContent='';
+  if(window.__fitLoanInput)window.__fitLoanInput();
+};
+window.__showLoanInputWarning = function(message){
+  window.__loanInputMessage=message;
+  const el=document.getElementById('pt_loan_rate');
+  const box=el && el.closest('.pg-pct-input');
+  const note=document.getElementById('loanInputNotice');
+  if(note)note.textContent=message;
+  if(el)el.setAttribute('aria-invalid','true');
+  if(window.__fitLoanInput)window.__fitLoanInput(false);
+  if(box){clearTimeout(box.__loanWarningTimer);box.classList.remove('loan-input-flash');void box.offsetWidth;box.classList.add('loan-input-flash');box.__loanWarningTimer=setTimeout(()=>box.classList.remove('loan-input-flash'),1950);}
+};
+</script>
+<style>
+/* Approved input feedback: the error is a placeholder, never a stored number. */
+input.ck-active.ck-input-error {
+  color:#b52f35!important;
+  background:#fff0ee!important;
+  border-color:#bd3636!important;
+  outline:2px solid #bd3636!important;
+  box-shadow:0 0 0 3px rgba(189,54,54,.18)!important;
+  padding-left:4px!important;
+  padding-right:4px!important;
+  text-align:center!important;
+  font-size:var(--ck-error-font,14px)!important;
+  font-weight:600!important;
+}
+input.ck-input-error::placeholder {color:#b52f35!important;opacity:1!important;font-size:var(--ck-error-font,14px)!important;font-weight:600!important;}
+.dash-input-wrap:has(> input.ck-input-error) > .dash-input-suffix {visibility:hidden;}
+input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!important;}
+@keyframes ck-input-error-flash {0%,100%{opacity:1;}50%{opacity:.4;}}
+@media(prefers-reduced-motion:reduce){input.ck-input-error-flash{animation:none!important;}}
 </style>
 </head>
 <body>
@@ -3008,10 +3142,10 @@
         <div class="dash-display" id="p_rate">—</div>
         <select id="p_rate_select" style="display:none;">
           <option value="" selected>—</option>
-          <option value="0.45">45% (2年內)</option>
-          <option value="0.35">35% (2-5年)</option>
-          <option value="0.20">20% (5-10年)</option>
-          <option value="0.15">15% (10年以上)</option>
+          <option value="0.45">45% (持有 2年以內)</option>
+          <option value="0.35">35% (持有 超過2年 且未逾5年)</option>
+          <option value="0.20">20% (持有 超過5年 且未逾10年)</option>
+          <option value="0.15">15% (持有 超過10年)</option>
         </select>
         <div class="dash-subnote"><span class="k">出售可列舉</span><span class="v"><span id="p_sell_ded">—</span> 萬</span></div>
       </div>
@@ -3025,7 +3159,7 @@
           <input type="number" class="dash-input req" id="p_first_price" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
-        <div class="dash-subnote"><span class="k">無列舉上限</span><span class="v"><span id="p_exempt">—</span> 萬</span></div>
+        <div class="dash-subnote center presale-expense-note"><span class="presale-expense-note-text">無法列舉上限額已取消</span></div>
       </div>
       <div class="dash-cell">
         <div class="dash-label label-sm"><span>預售<span style="color:#C44E4E;">已付款</span></span></div>
@@ -3225,10 +3359,10 @@
         <div class="dash-display" id="d_rate">—</div>
         <select id="d_rate_select" style="display:none;">
           <option value="" selected>—</option>
-          <option value="0.45">45% (2年內)</option>
-          <option value="0.35">35% (2-5年)</option>
-          <option value="0.20">20% (5-10年)</option>
-          <option value="0.15">15% (10年以上)</option>
+          <option value="0.45">45% (持有 2年以內)</option>
+          <option value="0.35">35% (持有 超過2年 且未逾5年)</option>
+          <option value="0.20">20% (持有 超過5年 且未逾10年)</option>
+          <option value="0.15">15% (持有 超過10年)</option>
           <option value="0.10">10% (自用滿6年)</option>
         </select>
         <div class="dash-subnote"><span class="k">無列舉上限</span><span class="v"><span id="d_exempt">—</span> 萬</span></div>
@@ -3450,7 +3584,7 @@
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    1150713W
+    <span id="appVersion">房地合一 · 更新日 2026.09.08C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3494,28 +3628,28 @@
     <div class="rate-sheet-option" data-value="0.45">
       <div>
         <div class="rate-num">45%</div>
-        <div class="rate-desc">持有 2 年內</div>
+        <div class="rate-desc">持有 2年以內</div>
       </div>
       <div class="rate-check"></div>
     </div>
     <div class="rate-sheet-option" data-value="0.35">
       <div>
         <div class="rate-num">35%</div>
-        <div class="rate-desc">持有 2 - 5 年</div>
+        <div class="rate-desc">持有 超過2年 且未逾5年</div>
       </div>
       <div class="rate-check"></div>
     </div>
     <div class="rate-sheet-option" data-value="0.20">
       <div>
         <div class="rate-num">20%</div>
-        <div class="rate-desc">持有 5 - 10 年</div>
+        <div class="rate-desc">持有 超過5年 且未逾10年</div>
       </div>
       <div class="rate-check"></div>
     </div>
     <div class="rate-sheet-option" data-value="0.15">
       <div>
         <div class="rate-num">15%</div>
-        <div class="rate-desc">持有 10 年以上</div>
+        <div class="rate-desc">持有 超過10年</div>
       </div>
       <div class="rate-check"></div>
     </div>
@@ -3533,7 +3667,6 @@
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => Math.round(n).toLocaleString();
-const fmtWanShort = n => (Math.round(n / 100) / 100).toFixed(2);
 // 無條件捨去版(專給屋主最終利潤:避免 -99.9961 四捨五入進位成 -100.00)
 const fmtWanTrunc = n => (Math.trunc(n / 100) / 100).toFixed(2);
 // 元轉萬、4 位小數(dashboard 副註用)
@@ -3553,6 +3686,29 @@ const LOCKED_DEFAULT_FIELDS = {
 // 兩版各自的級距 select id(級距無預設值,永遠由使用者點選)
 const RATE_SELECT_ID = { ready: 'd_rate_select', preview: 'p_rate_select' };
 
+// 三方明細共用容器會在切版時重建；輸入值獨立保存，不以 DOM 是否存在判定為空。
+const PARTY_FIELD_VALUES = { pt_loan_rate: '80', pt_agent_other: '0', p_pt_agent_other: '0' };
+function isPartyField(id) {
+  return Object.prototype.hasOwnProperty.call(PARTY_FIELD_VALUES, id);
+}
+function readPartyField(id) {
+  const el = $(id);
+  if (el) {
+    // 計算機顯示中的算式只是草稿；完成後才更新 ckOrigValue 並提交。
+    const drafting = el.classList.contains('ck-active') && el.dataset.ckOrigValue !== undefined;
+    PARTY_FIELD_VALUES[id] = String(drafting ? el.dataset.ckOrigValue : el.value);
+  }
+  return PARTY_FIELD_VALUES[id];
+}
+function capturePartyFields() {
+  Object.keys(PARTY_FIELD_VALUES).forEach(readPartyField);
+}
+function isNonDefaultPartyValue(id, value) {
+  const raw = String(value == null ? '' : value).trim();
+  const number = Number(raw);
+  return raw !== '' && Number.isFinite(number) && number !== (id === 'pt_loan_rate' ? 80 : 0);
+}
+
 const FIELDS = ['d_sale','d_buy','d_rate_select','d_seller_rate','d_buyer_rate','d_buyer_fixed','d_target',
   // 出售時成本
   'ap_s_landtax','ap_s_sign','ap_s_log','ap_s_bank','ap_c_nonded',
@@ -3564,6 +3720,7 @@ const FIELDS = ['d_sale','d_buy','d_rate_select','d_seller_rate','d_buyer_rate',
   'pt_loan_rate','pt_agent_other'];
 
 function num(id) {
+  if (isPartyField(id)) return parseFloat(readPartyField(id)) || 0;
   const el = $(id);
   if (!el) return 0;
   const v = el.value;
@@ -3659,7 +3816,6 @@ function calc() {
   // 最終利潤 = 原利潤 + 仲退
   const profit = profitBase + rebate;
 
-  const roi = buy > 0 ? (profit / buy) * 100 : 0;
 
   // === Dashboard 摘要更新 ===
   $('d_profit').textContent = fmtWanTrunc(profit);
@@ -3710,12 +3866,10 @@ function calc() {
   if ($('s_final')) setSafetyValue('s_final', (Math.trunc(finalCommission * 10000) / 100).toFixed(2) + '%');
   $('d_rate').textContent = rateSelected ? (rate * 100).toFixed(0) + '%' : '—';
   if ($('d_buyer_total')) $('d_buyer_total').textContent = fmtWanTrunc(buyerTotal);
-  if ($('d_acq_cost')) $('d_acq_cost').textContent = fmtWanTrunc(buyCost);
   // 「出售可列舉」格只顯示「出售雜項+仲介費(不含土增稅)」(sellCostExclLandTax),非取大值;
   // 稅基計算仍用 sellDeductible = MAX(免稅額, 雜項+仲介),兩者刻意分離
   if ($('d_sell_ded')) $('d_sell_ded').textContent = fmtWanTrunc(sellCostExclLandTax);
   if ($('d_exempt')) $('d_exempt').textContent = fmtWanTrunc(exempt3pct);
-  if ($('d_buyer_amt')) $('d_buyer_amt').textContent = fmtWanTrunc(buyerByPct) + ' 萬';
   if ($('d_buyer_pct')) $('d_buyer_pct').textContent = sale > 0 ? (Math.trunc((buyerFixed / sale) * 1000000) / 10000).toFixed(4) + ' %' : '— %';
   if ($('d_seller_amt')) $('d_seller_amt').textContent = fmtWan4(agentFee);
   // 新增的小附註框
@@ -3753,10 +3907,11 @@ function calc() {
   // 三方明細的使用者可輸入值(預設值會在 input 元素的 placeholder/data-default 給,空白時用 fallback)
   const ptLoanRate = (() => {
     const el = $('pt_loan_rate');
-    const v = parseFloat((el || {}).value);
+    if (readPartyField('pt_loan_rate') === '') return null;
+    const v = parseFloat(readPartyField('pt_loan_rate'));
     if (isNaN(v)) return 0.8;
     const pct = Math.min(100, Math.max(0, v)); // 貸款成數 0~100%
-    if (el && String(el.value) !== '' && Number(el.value) !== pct) el.value = String(pct);
+    if (el && !el.classList.contains('ck-active') && String(el.value) !== '' && Number(el.value) !== pct) el.value = String(pct);
     return pct / 100;
   })();
   const ptAgentOther = num('pt_agent_other');
@@ -4161,11 +4316,11 @@ function renderPartyTables(d) {
   const fmtW2 = n => (Math.round(n) / 10000).toFixed(2);
 
   // ===== 買方 =====
+  const loanMissing = d.buyerLoanRate == null;
   const buyerLoan = d.sale * d.buyerLoanRate;
   const buyerSelf = d.sale - buyerLoan;
   const buyerTotal = d.sale + d.buyerFee;
   const buyerRatePct = (d.sale > 0 ? Math.trunc((d.buyerFee / d.sale) * 10000) / 100 : 0).toFixed(2);
-  const loanRatePct = (d.buyerLoanRate * 100).toFixed(0);
 
   const buyerHtml = `
     <div class="pg-header">買 方</div>
@@ -4201,16 +4356,16 @@ function renderPartyTables(d) {
     <!-- 群組 2:預計貸款成數 + 自備款(無豎標籤,左側對齊) -->
     <div class="pg-group pg-group-noVlabel">
       <div class="pg-rows">
-        <div class="pg-row">
+        <div class="pg-row loan-input-row">
           <div class="pg-op"></div>
-          <div class="pg-label">預計貸款成數 <span class="pg-pct-input"><input type="text" class="pt-input pt-input-pct" id="pt_loan_rate" value="${Math.min(100, Math.max(0, d.buyerLoanRate*100)).toFixed(0)}" inputmode="numeric" maxlength="3" data-max="100">%</span></div>
-          <div class="pg-value" id="pt_loan_amount">${fmtN(buyerLoan/10000)}</div>
+          <div class="pg-label loan-input-label"><span class="loan-input-title">預計貸款成數</span><span class="loan-input-controls"><span class="pg-pct-input"><input type="text" class="pt-input pt-input-pct" id="pt_loan_rate" value="${loanMissing ? '' : String(Math.round(d.buyerLoanRate*1000000)/10000)}" inputmode="numeric" aria-label="預計貸款成數" aria-describedby="loanInputNotice" data-max="100"><span>%</span></span><span id="loanInputNotice" role="status" aria-live="polite">${window.__loanInputMessage}</span></span></div>
+          <div class="pg-value" id="pt_loan_amount">${loanMissing ? '—' : fmtW4(buyerLoan)}</div>
           <div class="pg-unit">萬</div>
         </div>
         <div class="pg-row">
           <div class="pg-op"></div>
-          <div class="pg-label">自備款 <span class="pg-pct-text" id="pt_self_pct">${(100 - d.buyerLoanRate*100).toFixed(0)}%</span></div>
-          <div class="pg-value" id="pt_self_amount">${fmtN(buyerSelf/10000)}</div>
+          <div class="pg-label">自備款 <span class="pg-pct-text" id="pt_self_pct">${loanMissing ? '—' : (100 - d.buyerLoanRate*100).toFixed(0) + '%'}</span></div>
+          <div class="pg-value" id="pt_self_amount">${loanMissing ? '—' : fmtW4(buyerSelf)}</div>
           <div class="pg-unit">萬</div>
         </div>
       </div>
@@ -4251,14 +4406,15 @@ function renderPartyTables(d) {
 
   if ($('partyBuyerBody')) {
     // 如果使用者正在編輯 pt_loan_rate(focus 在它身上),只更新連動數字、不重建整個 HTML
-    const editingLoan = document.activeElement && document.activeElement.id === 'pt_loan_rate';
+    const editingLoan = $('pt_loan_rate') && ($('pt_loan_rate').classList.contains('ck-active') || (document.activeElement && document.activeElement.id === 'pt_loan_rate'));
     if (editingLoan && $('pt_loan_amount')) {
-      $('pt_loan_amount').textContent = fmtN(buyerLoan/10000);
-      if ($('pt_self_pct')) $('pt_self_pct').textContent = (100 - d.buyerLoanRate*100).toFixed(0) + '%';
-      if ($('pt_self_amount')) $('pt_self_amount').textContent = fmtN(buyerSelf/10000);
+      $('pt_loan_amount').textContent = loanMissing ? '—' : fmtW4(buyerLoan);
+      if ($('pt_self_pct')) $('pt_self_pct').textContent = loanMissing ? '—' : (100 - d.buyerLoanRate*100).toFixed(0) + '%';
+      if ($('pt_self_amount')) $('pt_self_amount').textContent = loanMissing ? '—' : fmtW4(buyerSelf);
     } else {
       $('partyBuyerBody').innerHTML = buyerHtml;
     }
+    if (window.__fitLoanInput) window.__fitLoanInput(false);
   }
 
   // ===== 賣方 =====
@@ -4356,7 +4512,7 @@ function renderPartyTables(d) {
   if ($('partyAgentBody')) {
     // 使用者正在編輯仲介「其它」(pt_agent_other)時,只更新連動數字、不重建整個 HTML
     // (重建會銷毀+重生輸入框,造成綠↔白底色閃爍)
-    const editingAgentOther = document.activeElement && document.activeElement.id === 'pt_agent_other';
+    const editingAgentOther = (document.activeElement && document.activeElement.id === 'pt_agent_other') || !!document.getElementById('pt_agent_other')?.classList.contains('ck-active');
     if (editingAgentOther && $('pt_agent_final')) {
       $('pt_agent_final').textContent = fmtW4(finalAgent);
       if ($('pt_agent_kpi')) $('pt_agent_kpi').textContent = (Math.trunc(finalRate*10000)/100).toFixed(2) + '%';
@@ -4626,27 +4782,17 @@ document.addEventListener('input', function(e) {
   }
 }, true);
 
-// === 預計貸款成數上限 100% ===
+// === 貸款成數只驗證已提交數值；計算機輸入期間不截斷算式 ===
 document.addEventListener('input', function(e) {
   const el = e.target;
   if (!el || el.id !== 'pt_loan_rate') return;
   const raw = String(el.value || '').trim();
   if (raw === '') return;
-  const v = parseFloat(raw);
-  if (isNaN(v)) return;
-  if (v <= 100 && v >= 0) return;
-  el.value = String(Math.min(100, Math.max(0, v)));
-  let toast = document.getElementById('loanCapToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'loanCapToast';
-    toast.className = 'neg-toast';
-    toast.textContent = '貸款成數上限 100%';
-    document.body.appendChild(toast);
+  const v = Number(raw);
+  if (!Number.isFinite(v) || v > 100 || v < 0) {
+    el.value = '';
+    window.__showLoanInputWarning(v > 100 ? '數值上限不得超過100%' : '數值須介於0～100%');
   }
-  toast.classList.add('show');
-  clearTimeout(window.__loanCapToastTimer);
-  window.__loanCapToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
 }, true);
 
 // 點擊時自動全選(只在真正使用者點擊時觸發,不會在重建還原 focus 時觸發)
@@ -4668,10 +4814,12 @@ window.addEventListener('resize', () => {
 const STORAGE_KEY = 'house_tax_state_v1';
 
 function saveState() {
+  capturePartyFields();
   const state = {};
   FIELDS.forEach(id => {
     const el = $(id);
-    if (el) state[id] = el.value;
+    if (isPartyField(id)) state[id] = readPartyField(id);
+    else if (el) state[id] = el.value;
   });
   const json = JSON.stringify(state);
   // 嘗試 localStorage (有些環境會擋)
@@ -4706,6 +4854,12 @@ function loadState() {
       'ap_c_utility','ap_c_decor','ap_c_agent','ap_c_misc','ap_c_nonded2','ap_o_landgain'];
     FIELDS.forEach(id => {
       const el = $(id);
+      if (isPartyField(id) && state[id] !== undefined) {
+        PARTY_FIELD_VALUES[id] = String(state[id]);
+        if (!el) restored++;
+        // 只有修改過的明細值算輸入：其它 0、貸款 80 與空白不讓初始空表變成有資料。
+        if (isNonDefaultPartyValue(id, state[id])) hasValue = true;
+      }
       if (el && state[id] !== undefined) {
         el.value = state[id];
         restored++;
@@ -4753,12 +4907,12 @@ document.querySelectorAll('input[type="number"]').forEach(el => {
   });
 });
 
-// Tab 切換
-document.querySelectorAll('.tab-btn').forEach(btn => {
+// 成屋 Tab 切換：只更新成屋自己的按鈕與成本內容
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   btn.addEventListener('click', () => {
     const tab = btn.getAttribute('data-tab');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.tab-content').forEach(c => {
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('#tabPanels .tab-content').forEach(c => {
       c.classList.toggle('active', c.id === 'tab-' + tab);
     });
     // 點 Tab 時若是收合狀態,自動展開
@@ -4936,6 +5090,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     'p_pt_agent_other'];
 
   function n(id) {
+    if (isPartyField(id)) return parseFloat(readPartyField(id)) || 0;
     const el = document.getElementById(id);
     if (!el) return 0;
     const v = el.value;
@@ -4949,7 +5104,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
   function fmtWanShort(v) {
     if (!isFinite(v)) return '—';
-    // 統一顯示小數點後 4 位(買方總支出 / 取得可列舉 / 無列舉上限 / 出售可列舉)
+    // 統一顯示小數點後 4 位(買方總支出 / 取得可列舉 / 出售可列舉)
     return (v / 10000).toFixed(4);
   }
   function fmt(v) {
@@ -4968,40 +5123,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const op = (sym) => `<div class="flow-op">${sym}</div>`;
     const opTrailing = (sym) => `<div class="flow-op trailing">${sym}</div>`;
 
-    // ① 預售免稅額 = MIN(30萬, 換約價差×3%)
-    // 比照成屋版:先算 3% 原始值,再攤開「取小 30萬上限」的封頂過程
-    const exemptRaw3 = d.swapDiff * 0.03;     // 換約價差×3%(原始,未封頂)
-    // 做法A:出售價格 < 屋主取得房屋價 時,前兩格(出售價格−屋主取得)換成藍底提示,保留 ＋已付款 ＝換約價差
-    const sellBelowBuy = d.sale < d.buy;
-    const line1a = sellBelowBuy ? `
-      <div class="flow-cell flow-hint-cell"><div class="flow-hint-l1">出售價格低於屋主取得房屋價</div><div class="flow-hint-l2">此差額自動歸零</div></div>
-      ${op('+')}
-      ${cell('已付款', fmtN(d.paid), 'input paidcol')}
-      ${opTrailing('=')}
-    ` : `
-      ${cell('出售價格', fmtN(d.sale), 'input')}
-      ${op('−')}
-      ${cell('屋主取得房屋價', fmtN(d.buy), 'input')}
-      ${op('+')}
-      ${cell('已付款', fmtN(d.paid), 'input')}
-      ${opTrailing('=')}
-    `;
-    const line1b = `
-      ${cell('換約價差', fmtN(d.swapDiff))}
-      <div class="flow-op act">×</div>
-      ${cell('免稅比率', '3%', 'rate ratecol')}
-      ${op('=')}
-      ${cell('免稅額', fmtN(exemptRaw3), 'result')}
-    `;
-    const line1c = `
-      ${cell('免稅額', fmtN(exemptRaw3))}
-      <div class="flow-op act">取低</div>
-      ${cell('法定無列舉上限', fmtN(300000))}
-      ${op('=')}
-      ${cell('無列舉上限', fmtN(d.exempt3pct), 'result')}
-    `;
-
-    // ② 仲介費 = 售價 × 屋主費率
+    // ① 仲介費 = 售價 × 屋主費率
     const line2 = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('×')}
@@ -5010,16 +5132,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       ${cell('仲介費', fmtN(d.sellerAgentFee), 'result')}
     `;
 
-    // ③ 出售可列舉 = MAX(免稅額, 雜項+仲介費)
-    const line3 = `
-      ${cell('無列舉上限', fmtN(d.exempt3pct))}
-      <div class="flow-op act">擇高</div>
-      ${cell('出售雜項+仲介費', fmtN(d.sellTotalWithAgent))}
-      ${op('=')}
-      ${cell('實際認列額', fmtN(d.sellDeductible), 'result')}
-    `;
-
-    // ④ 房地合一稅基 + 稅
+    // ② 房地合一稅基 + 稅；出售稅費直接採用出售雜項加仲介費
     const line4a = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('−')}
@@ -5048,7 +5161,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       ${cell('應繳房地合一稅', pTaxCellVal, 'result' + (pNoTax ? ' loss' : ''))}
     `;
 
-    // ⑤ 屋主利潤(原利潤,未加仲退)— 分三排,避免單排過擠
+    // ③ 屋主利潤(原利潤,未加仲退)— 分三排,避免單排過擠
     const line5a = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('−')}
@@ -5071,7 +5184,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       ${cell('稅後利潤', fmtN(d.profitBase), 'result profit-result' + (d.profitBase < 0 ? ' neg' : ''))}
     `;
 
-    // ⑥ 目標利潤反推仲退
+    // ④ 目標利潤反推仲退
     const line6a = `
       ${cell('目標利潤', fmtN(d.targetProfit), 'input')}
       ${op('−')}
@@ -5094,32 +5207,18 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
           <div class="flow-line">${line2}</div>
         </div>
         <div class="flow-group">
-          <div class="flow-group-title">② 免稅額／出售可列舉額</div>
-          <div class="flow-group-desc">
-            若無法列舉成本時，免稅額為 <b>（成交價－屋主取得房屋價＋已付款） × 3％</b> ，但 <b>最高上限為 30 萬</b> （取其低）。<br>
-            若 <b>出售價格</b> 低於 <b>屋主取得房屋價</b> ，數值自動歸零。
-          </div>
-          <div class="flow-line">${line1a}</div>
-          <div class="flow-line">${line1b}</div>
-          <div class="flow-line">${line1c}</div>
-          <div class="flow-line">${line3}</div>
-          <div class="flow-group-desc">
-            若有列舉出實際成本與費用（如：代書費、履保、廣告費、仲介費⋯），其加總金額若高於法定減除費用 <b>「（成交價－屋主取得房屋價＋已付款） × 3％，上限 30 萬」</b> ，則可 <b>擇高認列</b> 。
-          </div>
-        </div>
-        <div class="flow-group">
-          <div class="flow-group-title">③ 房地合一稅</div>
+          <div class="flow-group-title">② 房地合一稅</div>
           <div class="flow-line">${line4a}</div>
           <div class="flow-line">${line4b}</div>
         </div>
         <div class="flow-group">
-          <div class="flow-group-title">④ 屋主利潤</div>
+          <div class="flow-group-title">③ 屋主利潤</div>
           <div class="flow-line">${line5a}</div>
           <div class="flow-line">${line5b}</div>
           <div class="flow-line">${line5c}</div>
         </div>
         <div class="flow-group">
-          <div class="flow-group-title">⑤ 目標利潤反推仲退</div>
+          <div class="flow-group-title">④ 目標利潤反推仲退</div>
           <div class="flow-line">${line6a}</div>
           <div class="flow-line">${line6b}</div>
         </div>
@@ -5353,7 +5452,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
         </div>
       `;
       // 正在編輯仲介「其它」時只更新連動數字,不重建(避免輸入框閃爍)
-      const editingAgentOtherP = document.activeElement && document.activeElement.id === 'p_pt_agent_other';
+      const editingAgentOtherP = (document.activeElement && document.activeElement.id === 'p_pt_agent_other') || !!document.getElementById('p_pt_agent_other')?.classList.contains('ck-active');
       if (editingAgentOtherP && document.getElementById('p_pt_agent_final')) {
         document.getElementById('p_pt_agent_final').textContent = fmtW4(finalAgent);
         const kpi = document.getElementById('p_pt_agent_kpi');
@@ -5383,7 +5482,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   function calcPresale() {
     // === 輸入(元) ===
     const sale = n('p_sale') * 10000;       // 出售價格 B16
-    const buy = n('p_buy') * 10000;          // 購屋價格 E16(=第一手合約價)
+    const buy = n('p_buy') * 10000;          // 本手屋主取得房屋價格 E16
     const paid = n('p_paid') * 10000;        // 已付款 H16
     const unpaid = n('p_unpaid') * 10000;    // 未付款 K16
     const targetWan = n('p_target');         // 屋主目標利潤(萬) H22
@@ -5419,16 +5518,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // 出售雜項+仲介費 T28 = T26 + T27
     const sellTotalWithAgent = sellMisc + sellerAgentFee;
 
-    // 預售免稅額 I19 (Excel 公式 AI18):
-    //   AG20 = (B16-O26+H16)*10000 = 換約價差(元)
-    //   AI20 = AG20 * 3%
-    //   AI18 = MIN(30萬, AI20)
-    const swapDiff = Math.max(0, sale - buy) + paid; // 免稅額：MAX(0,售-屋主取得價)+已付，賠售歸零（對應 Excel AG20 用 E16）
-    const exempt3pct = Math.min(300000, swapDiff * 0.03);
     const ownerSwap = sale - firstPrice + paid; // 換約款給屋主：成交-第一手+已付（對應 Excel AG25 用 O26，無歸零）
 
-    // 出售可列舉 - Excel AG27:IF(免稅額<雜項+仲介, 雜項+仲介, 免稅額)
-    const sellDeductible = Math.max(exempt3pct, sellTotalWithAgent);
+    // 出售稅費：對齊目前 Excel L27 = T26 + T27，直接採用出售雜項加仲介費
+    const sellDeductible = sellTotalWithAgent;
 
     // 房地合一稅基 C29 = 售價 - 購屋價 - 取得時稅費 - 出售可列舉
     const taxBaseRaw = sale - buy - buyTaxFee - sellDeductible;  // 未歸零(可為負)
@@ -5473,10 +5566,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 
     // 第二排:級距 + 第一手價格
     set('p_rate', rateSelectedP ? (rate*100).toFixed(0) + '%' : '—');
-    set('p_exempt', fmtWanShort(exempt3pct));
-    // 「出售可列舉」格只顯示「出售雜項+仲介費」(sellTotalWithAgent),非取大值;
-    // 稅基計算仍用 sellDeductible = MAX(免稅額, 雜項+仲介),兩者刻意分離
-    set('p_sell_ded', fmtWanShort(sellTotalWithAgent));
+    // 「出售可列舉」與稅基採用相同的實際出售稅費
+    set('p_sell_ded', fmtWanShort(sellDeductible));
     // 註:「取得可列舉」(p_buy_taxfee)顯示於「取得房屋價格」格下方,應繳稅額改在 Tab/公式流程顯示
 
     // 第三排 4 格 — subnote 統一顯示 4 位小數
@@ -5548,8 +5639,8 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // === 公式流程 + 三方明細(只在預售模式才渲染進共用收合區)===
     if (document.body.classList.contains('is-preview')) {
       const d = {
-        sale, buy, paid, unpaid, firstPrice, swapDiff, ownerSwap,
-        exempt3pct, sellMisc, sellerAgentFee, sellTotalWithAgent, sellDeductible,
+        sale, buy, unpaid, firstPrice, ownerSwap,
+        sellMisc, sellerAgentFee, sellDeductible,
         buyTaxFee, taxBase, taxBaseRaw, tax, rate,
         profitBase, targetProfit, rebate, profit,
         nonDeductible, buyerRate, buyerFixed, buyerByPct, buyerFee, buyerTotal,
@@ -5576,10 +5667,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   // === 預售版獨立儲存/還原 ===
   const PRESALE_KEY = 'house_tax_presale_v1';
   function savePresaleState() {
+    capturePartyFields();
     const state = {};
     FIELDS_P.forEach(id => {
       const el = document.getElementById(id);
-      if (el) state[id] = el.value;
+      if (isPartyField(id)) state[id] = readPartyField(id);
+      else if (el) state[id] = el.value;
     });
     try { localStorage.setItem(PRESALE_KEY, JSON.stringify(state)); } catch(e) {}
   }
@@ -5597,6 +5690,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       FIELDS_P.forEach(id => {
         if (state[id] !== undefined) {
           const el = document.getElementById(id);
+          if (isPartyField(id)) {
+            PARTY_FIELD_VALUES[id] = String(state[id]);
+            if (!el) restored++;
+            if (isNonDefaultPartyValue(id, state[id])) hasValue = true;
+          }
           if (el) {
             el.value = state[id];
             restored++;
@@ -5645,6 +5743,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   const KEY = 'fwTax_ver';
 
   function apply(ver) {
+    // 先完成目前欄位，再保存其值，避免切版重建後才提交舊輸入框。
+    if (typeof window.__commitCalcKbDraft === 'function' && window.__commitCalcKbDraft() === false) return;
+    capturePartyFields();
     btns.forEach(b => b.classList.toggle('active', b.dataset.ver === ver));
     if (ver === 'preview') {
       document.body.classList.add('is-preview');
@@ -5796,7 +5897,7 @@ $('collapseBtn').addEventListener('click', () => {
     btn.classList.remove('collapsed');
     const last = btn.dataset.lastTab || 'sell';
     tabs.forEach(b => b.classList.toggle('active', b.getAttribute('data-tab') === last));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + last));
+    document.querySelectorAll('#tabPanels .tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + last));
   } else {
     // 收合:記住目前分頁,移除所有 active(三個 tab 都恢復白色)
     const active = [...tabs].find(b => b.classList.contains('active'));
@@ -5873,6 +5974,8 @@ function clearTargetFields(verKey) {
 // 進入「清空狀態」:清空欄位、級距設未選、移除鎖定欄位 placeholder
 // opts.silent  — true 則不跳 toast、不自動 focus(啟動時用)
 function enterClearedState(verKey, opts) {
+  // 清空取消尚未提交的計算機草稿；建立快照時只取已完成的原值。
+  if (typeof window.__cancelCalcKbDraft === 'function') window.__cancelCalcKbDraft();
   opts = opts || {};
   // asInitial = true:首次打開的初始清空 — 外觀清空,但按鈕維持「清空數值」、不留 snapshot
   //                   (使用者尚無「上一次數值」可恢復,不顯示「恢復數值」以免誤導)
@@ -5890,11 +5993,19 @@ function enterClearedState(verKey, opts) {
   let hadContent = false; // 清空前畫面是否有「使用者主動輸入」的內容
   targetFields.forEach(id => {
     const el = $(id);
-    if (!el) return;
+    if (!el) {
+      if (isPartyField(id)) {
+        snap[id] = readPartyField(id);
+        if (String(snap[id]).trim() !== '' && !NON_CONTENT_FIELDS.includes(id)) hadContent = true;
+        PARTY_FIELD_VALUES[id] = id === 'pt_loan_rate' ? '80' : '';
+      }
+      return;
+    }
     if (el.tagName === 'SELECT') return; // 級距下拉另外處理
     snap[id] = el.value;
     if (String(el.value).trim() !== '' && !NON_CONTENT_FIELDS.includes(id)) hadContent = true;
-    el.value = '';
+    el.value = id === 'pt_loan_rate' ? '80' : '';
+    if (isPartyField(id)) PARTY_FIELD_VALUES[id] = el.value;
     // 鎖定的預設欄位:清空時連預設值 + placeholder 一起清掉,並標記 cleared
     // → 讓 num()/n() 在空白時回傳 0;且灰字提示也不顯示(真正空白)
     if (lockedDefaults.includes(id)) {
@@ -5925,6 +6036,8 @@ function enterClearedState(verKey, opts) {
   // 首次初始清空:另用旗標標記(外觀清空但無 snapshot),供第一次輸入時回填灰字
   initialClearState[verKey] = asInitial;
   runCalc();
+  // 預售的重算沒有自動存檔，清空也須立即保存，重新開啟才不會讀回舊值。
+  if (verKey === 'preview' && typeof window.savePresaleState === 'function') window.savePresaleState();
   // 更新「恢復數值」按鈕顯隱:
   //  asInitial(首次打開)→ 無 snapshot → 不顯示恢復按鈕
   //  一般清空 → 有 snapshot → 顯示恢復按鈕
@@ -5944,6 +6057,7 @@ function restoreClearedState(verKey) {
   const runCalc = verKey === 'preview' ? (window.calcPresale || (() => {})) : calc;
   Object.keys(snap).forEach(id => {
     if (id === '__rate__') return;
+    if (isPartyField(id)) PARTY_FIELD_VALUES[id] = String(snap[id]);
     const el = $(id);
     if (!el) return;
     el.value = snap[id];
@@ -5956,6 +6070,7 @@ function restoreClearedState(verKey) {
   if (rateEl && snap['__rate__'] !== undefined) rateEl.value = snap['__rate__'];
   clearSnapshots[verKey] = null;
   runCalc();
+  if (verKey === 'preview' && typeof window.savePresaleState === 'function') window.savePresaleState();
   if (verKey === currentVerKey()) resetClearBtn();
 }
 
@@ -6187,12 +6302,51 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   if (!kb || !backdrop) return;
 
   // 計算機綁定的欄位
-  const READY_FIELDS = ['d_sale','d_buy','d_buyer_rate','d_buyer_fixed','d_target','d_seller_rate'];
-  const ALL_FIELDS = READY_FIELDS.slice();
 
   let targetInput = null;   // 目前編輯的欄位
   let expr = '';            // 目前輸入的數字字串
   let touched = false;      // 本次開鍵盤後使用者是否實際編輯過(含按 C/退格清空);用來區分「點進來沒動」與「刻意清空」
+
+  let inputError = null;
+  function clearInputError(){
+    if (!inputError) return;
+    const {input, placeholder, ariaInvalid, errorFont, timer} = inputError;
+    clearTimeout(timer);
+    input.classList.remove('ck-input-error', 'ck-input-error-flash');
+    if (placeholder === null) input.removeAttribute('placeholder');
+    else input.setAttribute('placeholder', placeholder);
+    if (ariaInvalid === null) input.removeAttribute('aria-invalid');
+    else input.setAttribute('aria-invalid', ariaInvalid);
+    if (errorFont) input.style.setProperty('--ck-error-font', errorFont);
+    else input.style.removeProperty('--ck-error-font');
+    inputError = null;
+  }
+  function rejectInvalidInput(){
+    if (!targetInput) return false;
+    clearInputError();
+    const input = targetInput;
+    expr = ''; touched = true;
+    input.value = '';
+    input.dataset.ckOrigValue = '';
+    input.dispatchEvent(new Event('input', {bubbles:true}));
+    input.dispatchEvent(new Event('change', {bubbles:true}));
+    inputError = {
+      input,
+      placeholder:input.getAttribute('placeholder'),
+      ariaInvalid:input.getAttribute('aria-invalid'),
+      errorFont:input.style.getPropertyValue('--ck-error-font'),
+      timer:null
+    };
+    input.setAttribute('placeholder', '輸入異常');
+    input.setAttribute('aria-invalid', 'true');
+    input.style.setProperty('--ck-error-font', Math.max(10, Math.min(14, Math.floor((input.clientWidth - 8) / 4))) + 'px');
+    input.classList.add('ck-input-error');
+    void input.offsetWidth;
+    input.classList.add('ck-input-error-flash');
+    inputError.timer = setTimeout(() => input.classList.remove('ck-input-error-flash'), 1950);
+    scrollIntoView(input);
+    return false;
+  }
 
   // 安全求值:只允許數字、小數點、+ - * / % 與括號
   function evalExpr(s){
@@ -6212,9 +6366,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }
 
   // 把目前 expr 即時顯示在「欄位本身」(欄位就是計算機螢幕)
-  function refreshField(){
+  function refreshField(isResult=false){
     if (!targetInput) return;
-    targetInput.value = expr;
+    const loan = targetInput.id === 'pt_loan_rate';
+    targetInput.value = loan ? expr.replace(/\*/g,'×').replace(/\//g,'÷').replace(/-/g,'−') : expr;
+    if (loan) window.__fitLoanInput(!isResult && expr !== '');
+    else targetInput.scrollLeft = targetInput.scrollWidth;
   }
 
   // 把指定欄位捲動到鍵盤上方的可視區(避免被鍵盤遮住)
@@ -6235,8 +6392,25 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }, 80);
   }
 
+  // 快速重開時取消前一次收合的清理，保留新鍵盤需要的捲動空間。
+  let kbPaddingClearTimer = null;
+  function cancelKbPaddingClear(){
+    if (kbPaddingClearTimer !== null) clearTimeout(kbPaddingClearTimer);
+    kbPaddingClearTimer = null;
+  }
+  function scheduleKbPaddingClear(){
+    cancelKbPaddingClear();
+    kbPaddingClearTimer = setTimeout(() => {
+      kbPaddingClearTimer = null;
+      if (!kb.classList.contains('show')) document.body.style.paddingBottom = '';
+    }, 280);
+  }
+
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
+    cancelKbPaddingClear();
+    if ((input.id === 'pt_loan_rate' || inputError) && targetInput === input && kb.classList.contains('show')) return;
+    clearInputError();
     resetKbGestureState();
     // 先關掉前一格的高亮
     document.querySelectorAll('.ck-active')
@@ -6259,7 +6433,30 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kb.classList.add('show');
     // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
+    if (input.id === 'pt_loan_rate') window.__fitLoanInput(false);
     scrollIntoView(pctWrap || input);
+  }
+
+  function rejectLoanInput(message){
+    if (!targetInput || targetInput.id !== 'pt_loan_rate') return false;
+    expr = ''; touched = true;
+    targetInput.value = '';
+    targetInput.dataset.ckOrigValue = '';
+    targetInput.dispatchEvent(new Event('input', {bubbles:true}));
+    targetInput.dispatchEvent(new Event('change', {bubbles:true}));
+    window.__showLoanInputWarning(message);
+    scrollIntoView(targetInput.closest('.pg-pct-input') || targetInput);
+    return false;
+  }
+  function loanResultIsValid(value){
+    if (!targetInput) return true;
+    if (targetInput.id !== 'pt_loan_rate') {
+      return expr.trim() !== '' && (value === null || !isFinite(value)) ? rejectInvalidInput() : true;
+    }
+    if (value === null || !isFinite(value)) return rejectLoanInput('算式有誤，請重新輸入');
+    if (value > 100) return rejectLoanInput('數值上限不得超過100%');
+    if (value < 0) return rejectLoanInput('數值不得小於0%');
+    return true;
   }
 
   // 把目前 expr 算好寫回欄位,並觸發計算流程
@@ -6272,22 +6469,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       finalVal = touched ? '' : (targetInput.dataset.ckOrigValue || '');
     } else {
       const v = evalExpr(expr);
+      if (!loanResultIsValid(v)) return false;
       finalVal = (v !== null) ? fmtNum(v) : '';
     }
-    // 貸款成數不得超過 100%
-    if (targetInput.id === 'pt_loan_rate' && finalVal !== '') {
-      const lv = parseFloat(finalVal);
-      if (!isNaN(lv)) finalVal = String(Math.min(100, Math.max(0, lv)));
-    }
+    clearInputError();
+    if (targetInput.id === 'pt_loan_rate') window.__clearLoanInputWarning();
     // 還原欄位原本的 type
     const origType = targetInput.dataset.ckOrigType || 'number';
     targetInput.type = origType;
     targetInput.value = finalVal;
+    targetInput.dataset.ckOrigValue = finalVal;
     targetInput.dispatchEvent(new Event('input', { bubbles: true }));
     targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
   }
 
   function clearCkActive(){
+    window.__fitLoanInput(false);
     document.querySelectorAll('.ck-active').forEach(el => el.classList.remove('ck-active'));
   }
 
@@ -6299,7 +6497,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }
 
   function closeKb(){
-    commitToField();
+    if (commitToField() === false) return false;
     clearCkActive();
     backdrop.classList.remove('show');
     // 先播下滑動畫,底部 padding 等動畫結束再清,避免收合時整頁猛跳
@@ -6308,12 +6506,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
     resetKbGestureState();
-    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
+    scheduleKbPaddingClear();
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
   function cancelKb(){
     if (!kb.classList.contains('show')) return;
+    clearInputError();
     if (targetInput) {
       const origType = targetInput.dataset.ckOrigType || 'number';
       targetInput.type = origType;
@@ -6326,23 +6525,36 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     touched = false;
     resetKbGestureState();
-    setTimeout(() => { document.body.style.paddingBottom = ''; }, 280);
+    scheduleKbPaddingClear();
   }
+
+  window.__cancelCalcKbDraft = function(){
+    cancelKb();
+    window.__clearLoanInputWarning();
+  };
+  window.__commitCalcKbDraft = function(){
+    if (!kb.classList.contains('show')) return true;
+    return closeKb() !== false;
+  };
 
   // 按鍵處理
   function pressKey(k){
     if (k === '' || k == null) return;
     if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換(不算編輯內容)
     if (k === 'done'){ closeKb(); return; }      // 完成(不算編輯內容)
+    clearInputError();
+    if (targetInput && targetInput.id === 'pt_loan_rate') window.__clearLoanInputWarning();
     touched = true;   // 以下任一鍵都代表使用者實際編輯(含 C / 退格 清空)
     if (k === 'C'){ expr = ''; }
     else if (k === 'back'){ expr = expr.slice(0, -1); }
     else if (k === '='){
       const v = evalExpr(expr);
+      if (!loanResultIsValid(v)) return;
       if (v !== null) expr = fmtNum(v);
     }
     else if (k === '.'){
-      if (!expr.includes('.')) expr += (expr === '' ? '0.' : '.');
+      const currentOperand = expr.split(/[+*/-]/).pop();
+      if (!currentOperand.includes('.')) expr += (currentOperand === '' ? '0.' : '.');
     }
     else if (k === '+' || k === '-' || k === '*' || k === '/'){
       // 運算符:開頭不能放(除了負號)、避免連續兩個運算符
@@ -6351,13 +6563,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       expr += k;
     }
     else { expr += k; }   // 數字 0-9
-    // 貸款成數:輸入過程超過 100 立即壓回上限
-    if (targetInput && targetInput.id === 'pt_loan_rate') {
-      const lv = evalExpr(expr);
-      if (lv !== null && lv > 100) expr = '100';
-      if (lv !== null && lv < 0) expr = '0';
-    }
-    refreshField();
+    // 保留完整算式；只在等號、完成或離開欄位時驗證最終成數。
+    refreshField(k === '=');
   }
 
   // 運算鍵左右切換(記住偏好)
@@ -6534,7 +6741,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (k === 'Backspace') return { action: 'press', k: 'back' };
     if (k === 'Delete') return { action: 'press', k: 'C' };
     if (k === 'c' || k === 'C') return { action: 'press', k: 'C' };
-    if (k === '=' || code === 'Equal') return { action: 'press', k: '=' };
+    if (k === '=' || (code === 'Equal' && !e.shiftKey && k !== '+')) return { action: 'press', k: '=' };
     if (k === '.' || code === 'NumpadDecimal' || k === 'Decimal') return { action: 'press', k: '.' };
     if (k === '+' || code === 'NumpadAdd') return { action: 'press', k: '+' };
     if (k === '-' || code === 'NumpadSubtract') return { action: 'press', k: '-' };
@@ -6705,7 +6912,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const next = list[i];
     if (!next || next === targetInput) return;
     const nextId = next.id;
-    commitToField(); // 可能觸發重繪,故用 id 重新取節點
+    if (commitToField() === false) return; // 可能觸發重繪,故用 id 重新取節點
     const nextEl = document.getElementById(nextId);
     if (nextEl && canOpenKb(nextEl)) openKb(nextEl);
     else {
@@ -6742,7 +6949,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       lastOpenAt = now;
       if (kb.classList.contains('show') && targetInput && targetInput !== el) {
         const nextId = el.id;
-        commitToField();
+        if (commitToField() === false) return;
         const nextEl = document.getElementById(nextId);
         if (nextEl && canOpenKb(nextEl)) openKb(nextEl);
         return;
