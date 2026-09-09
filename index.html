@@ -2344,6 +2344,9 @@
     transform: translateX(-50%) translateY(0);
     pointer-events: auto;
   }
+  @media (prefers-reduced-motion: reduce) {
+    .calc-kb { transition: none; }
+  }
 
   .calc-kb-grip {
     width: 38px; height: 4px; border-radius: 2px;
@@ -3193,7 +3196,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.09M</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.09N</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6192,24 +6195,58 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }, 80);
   }
 
-  // 快速重開時取消前一次收合的清理，保留新鍵盤需要的捲動空間。
-  let kbPaddingClearTimer = null;
-  function cancelKbPaddingClear(){
-    if (kbPaddingClearTimer !== null) clearTimeout(kbPaddingClearTimer);
-    kbPaddingClearTimer = null;
+  // 留白與必要的頁面回位跟隨鍵盤實際的 CSS 動畫進度，不在收完後才跳回。
+  let kbCloseFrame = null;
+  let kbCloseGeneration = 0;
+  function cancelKbCloseMotion(){
+    ++kbCloseGeneration;
+    if (kbCloseFrame !== null) cancelAnimationFrame(kbCloseFrame);
+    kbCloseFrame = null;
   }
-  function scheduleKbPaddingClear(){
-    cancelKbPaddingClear();
-    kbPaddingClearTimer = setTimeout(() => {
-      kbPaddingClearTimer = null;
-      if (!kb.classList.contains('show')) document.body.style.paddingBottom = '';
-    }, 280);
+  function startKbCloseMotion(){
+    cancelKbCloseMotion();
+    const generation = kbCloseGeneration;
+    const height = kb.getBoundingClientRect().height;
+    const startOffset = kb.getBoundingClientRect().bottom - window.innerHeight;
+    const hiddenOffset = height * 1.1; // 與 CSS translateY(110%) 相同。
+    const startPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+    const viewportWidth = window.innerWidth, viewportHeight = window.innerHeight;
+    kb.classList.remove('show');
+    if (!startPadding || hiddenOffset - startOffset < 0.5 ||
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.body.style.paddingBottom = '';
+      return;
+    }
+    let startY = null, lastY = null, followScroll = true;
+    function frame(){
+      if (generation !== kbCloseGeneration || kb.classList.contains('show')) return;
+      const offset = kb.getBoundingClientRect().bottom - window.innerHeight;
+      let progress = Math.max(0, Math.min(1, (offset - startOffset) / (hiddenOffset - startOffset)));
+      if (window.innerWidth !== viewportWidth || window.innerHeight !== viewportHeight) {
+        // 視窗尺寸改變時，不再用舊尺寸拉動頁面。
+        progress = 1; followScroll = false;
+      }
+      if (startY === null) startY = window.scrollY;
+      // 導覽或使用者自行捲動優先，後續畫格不搶回原位置。
+      if (lastY !== null && Math.abs(window.scrollY - lastY) > 2) followScroll = false;
+      const currentPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+      const endY = Math.min(startY, Math.max(0,
+        document.documentElement.scrollHeight - window.innerHeight - currentPadding));
+      const finished = progress >= 0.999;
+      document.body.style.paddingBottom = finished ? '' : (startPadding * (1 - progress)) + 'px';
+      if (followScroll && endY < startY) {
+        window.scrollTo({left: window.scrollX, top: finished ? endY : startY + (endY - startY) * progress, behavior: 'instant'});
+      }
+      lastY = window.scrollY;
+      kbCloseFrame = finished ? null : requestAnimationFrame(frame);
+    }
+    kbCloseFrame = requestAnimationFrame(frame);
   }
 
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
     cancelPendingUnlockOpen();
-    cancelKbPaddingClear();
+    cancelKbCloseMotion();
     if (targetInput === input && kb.classList.contains('show')) return;
     // 所有入口都遵守換欄前提交，包含解鎖與動態節點重建後的開欄。
     if (targetInput && kb.classList.contains('show') && !draftCommitted) {
@@ -6316,15 +6353,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (commitToField() === false) return false;
     clearCkActive();
     backdrop.classList.remove('show');
-    // 先播下滑動畫,底部 padding 等動畫結束再清,避免收合時整頁猛跳
-    kb.classList.remove('show');
+    startKbCloseMotion();
     targetInput = null;
     draftSnapshot = null;
     draftCommitted = false;
     expr = '';
     // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
     resetKbGestureState();
-    scheduleKbPaddingClear();
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
@@ -6344,14 +6379,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }
     clearCkActive();
     backdrop.classList.remove('show');
-    kb.classList.remove('show');
+    startKbCloseMotion();
     targetInput = null;
     draftSnapshot = null;
     draftCommitted = false;
     expr = '';
     touched = false;
     resetKbGestureState();
-    scheduleKbPaddingClear();
   }
 
   window.__cancelCalcKbDraft = function(){
