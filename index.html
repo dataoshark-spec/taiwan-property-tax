@@ -754,6 +754,7 @@
     color: #FFD58A !important;
     font-weight: 700 !important;
   }
+  #d_profit { white-space: nowrap; padding: 0 18px 0 2px !important; }
   .dash-display.profit.neg { color: #FF9090 !important; background: #1F2F2A !important; }
   /* 級距 = 必選(用下拉選),米白底 */
   #d_rate { background: #FFFEF8 !important; }
@@ -2152,6 +2153,13 @@
   .pg-value .pt-input:hover { background: #F2F1EB; }
   .pg-value .pt-input:focus { background: #1F2F2A; color: #fff; }
 
+  /* 仲介其它：閒置時顯示四位，原始 input 值與草稿保持不變。 */
+  .pt-wan-wrap { position: relative; display: inline-block; width: 88px; height: 22px; vertical-align: middle; }
+  .pg-value .pt-wan-wrap > .pt-input { width: 100%; transition: background .15s; }
+  .pt-wan-text { position: absolute; inset: 1px 8px; pointer-events: none; color: #1F2F2A; font-size: 13px; font-weight: 600; line-height: 20px; text-align: right; white-space: nowrap; }
+  .pt-wan-wrap.has-amount > .pt-input:not(.ck-active) { color: transparent !important; }
+  .pt-wan-wrap > .pt-input.ck-active + .pt-wan-text { visibility: hidden; }
+
   /* 單位欄 */
   .pg-unit {
     text-align: center;
@@ -3196,7 +3204,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.09N</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.09O</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3297,12 +3305,10 @@ function truncDisplayInteger(value) {
   const tolerance = Number.EPSILON * Math.max(1, Math.abs(value)) * 4;
   return Math.trunc(Math.abs(value - nearest) <= tolerance ? nearest : value);
 }
-// 三方明細的兩位「萬」顯示：先沿用原本整元規則，再以百元處理半值。
-function fmtWan2Rounded(value) {
-  const roundedYuan = Math.round(value);
-  const hundreds = Math.round(Math.abs(roundedYuan) / 100);
-  if (roundedYuan < 0 && hundreds === 0) return '-0.00';
-  return (Math.sign(roundedYuan) * hundreds / 100).toFixed(2);
+// 屋主最終利潤：沿用朝零截尾，顯示精確到元；至少兩位、最多四位。
+function fmtProfitWan(value) {
+  if (!Number.isFinite(value)) return '—';
+  return (truncDisplayInteger(value) / 10000).toFixed(4).replace(/(\.\d{2}\d*?)0+$/, '$1');
 }
 // 只格式化顯示文字，保留原位數與負數四捨五入方向。
 function fmtRoundedDisplay(value, places) {
@@ -3315,7 +3321,7 @@ function fmtFlowPercent(value) {
   const places = value < 0.1 && value > 0 ? 1 : 0;
   return fmtRoundedDisplay(value * 100, places) + '%';
 }
-// 無條件捨去版(專給屋主最終利潤:避免 -99.9961 四捨五入進位成 -100.00)
+// 摘要副註沿用兩位無條件捨去顯示。
 const fmtWanTrunc = n => (truncDisplayInteger(n / 100) / 100).toFixed(2);
 // 元轉萬、4 位小數(dashboard 副註用)
 const fmtWan4 = n => isFinite(n) ? (n / 10000).toFixed(4) : '—';
@@ -3573,7 +3579,7 @@ function calc() {
 
 
   // === Dashboard 摘要更新 ===
-  $('d_profit').textContent = fmtWanTrunc(profit);
+  $('d_profit').textContent = fmtProfitWan(profit);
   $('d_profit').classList.toggle('neg', profit < 0);
 
   // === 防呆列更新 ===
@@ -3726,7 +3732,7 @@ function autoFitDashNumbers() {
     const padL = parseFloat(cs.paddingLeft) || 0;
     const padR = parseFloat(cs.paddingRight) || 0;
     // 預留 suffix(萬/%)寬度 + 安全 gap
-    const available = el.clientWidth - padL - padR - 14;
+    const available = el.clientWidth - padL - padR - (el.id === 'd_profit' ? 0 : 14);
     if (available <= 0) return;
 
     // 從 17px 往下找最大塞得下的字級
@@ -3734,6 +3740,11 @@ function autoFitDashNumbers() {
     for (let s = 17; s >= 10; s--) {
       mirror.style.fontSize = s + 'px';
       if (mirror.offsetWidth <= available) { chosen = s; break; }
+    }
+    // 此格最多四位小數；窄畫面或較長金額仍完整放進原框。
+    if (el.id === 'd_profit') {
+      mirror.style.fontSize = chosen + 'px';
+      if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * available / mirror.offsetWidth * 10) / 10);
     }
     el.style.setProperty('font-size', chosen + 'px', 'important');
   });
@@ -4051,6 +4062,28 @@ function renderFlow(d) {
 }
 
 // === 三方明細(買方/賣方/仲介)===
+// 三方金額輸入只加顯示層，不把格式化文字寫回 input、計算或保存資料。
+function renderPartyWanInput(id) {
+  return `<span class="pt-wan-wrap"><input type="text" class="pt-input" id="${id}" value="${readPartyField(id)}" inputmode="numeric"><span class="pt-wan-text" aria-hidden="true"></span></span>`;
+}
+function refreshPartyWanDisplays() {
+  document.querySelectorAll('.pt-wan-wrap').forEach(wrap => {
+    const input = wrap.querySelector('input');
+    const display = wrap.querySelector('.pt-wan-text');
+    if (!input || !display) return;
+    const raw = input.value.trim();
+    const value = Number(raw);
+    const formatted = raw !== '' && Number.isFinite(value) ? (Math.round(value * 10000) / 10000).toFixed(4) : '';
+    if (display.textContent !== formatted) display.textContent = formatted;
+    wrap.classList.toggle('has-amount', formatted !== '');
+    display.style.fontSize = '13px';
+    const available = display.clientWidth;
+    if (available > 0 && display.scrollWidth > available) {
+      display.style.fontSize = Math.max(1, Math.floor(13 * available / display.scrollWidth * 10) / 10) + 'px';
+    }
+  });
+}
+
 function renderPartyTables(d) {
   // 保留焦點:如果使用者正在打字,記住游標位置、選取範圍與「當下原始文字」,渲染後還原
   // 註:單記游標不夠 —— 重畫時框會用 num() 處理過的數字重建,會把「1.」這種打到一半的值改寫。
@@ -4068,7 +4101,6 @@ function renderPartyTables(d) {
 
   const fmtN = n => Math.round(n).toLocaleString();
   const fmtW4 = n => (Math.round(n) / 10000).toFixed(4);
-  const fmtW2 = fmtWan2Rounded;
 
   // ===== 買方 =====
   const loanMissing = d.buyerLoanRate == null;
@@ -4086,13 +4118,13 @@ function renderPartyTables(d) {
         <div class="pg-row">
           <div class="pg-op pg-op-add">加</div>
           <div class="pg-label">成交價</div>
-          <div class="pg-value" id="pt_buyer_sale">${fmtW2(d.sale)}</div>
+          <div class="pg-value" id="pt_buyer_sale">${fmtW4(d.sale)}</div>
           <div class="pg-unit">萬</div>
         </div>
         <div class="pg-row">
           <div class="pg-op pg-op-add">加</div>
           <div class="pg-label">仲介服務費用<span class="pg-rate-tag" id="pt_buyer_rate">${buyerRatePct}%</span></div>
-          <div class="pg-value" id="pt_buyer_fee">${fmtW2(d.buyerFee)}</div>
+          <div class="pg-value" id="pt_buyer_fee">${fmtW4(d.buyerFee)}</div>
           <div class="pg-unit">萬</div>
         </div>
       </div>
@@ -4164,8 +4196,8 @@ function renderPartyTables(d) {
     const editingLoan = $('pt_loan_rate') && ($('pt_loan_rate').classList.contains('ck-active') || (document.activeElement && document.activeElement.id === 'pt_loan_rate'));
     if (editingLoan && $('pt_loan_amount')) {
       // 預設成本回填也會在編輯中重算，補齊卡片數字並保留輸入節點。
-      if ($('pt_buyer_sale')) $('pt_buyer_sale').textContent = fmtW2(d.sale);
-      if ($('pt_buyer_fee')) $('pt_buyer_fee').textContent = fmtW2(d.buyerFee);
+      if ($('pt_buyer_sale')) $('pt_buyer_sale').textContent = fmtW4(d.sale);
+      if ($('pt_buyer_fee')) $('pt_buyer_fee').textContent = fmtW4(d.buyerFee);
       if ($('pt_buyer_rate')) $('pt_buyer_rate').textContent = buyerRatePct + '%';
       if ($('pt_buyer_total')) $('pt_buyer_total').textContent = fmtW4(buyerTotal);
       if ($('pt_buyer_registration')) $('pt_buyer_registration').textContent = fmtN(d.s_log);
@@ -4194,13 +4226,13 @@ function renderPartyTables(d) {
 
     <div class="pg-group pg-group-noVlabel">
       <div class="pg-rows">
-        <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">成交價</div><div class="pg-value">${fmtW2(d.sale)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">成交價</div><div class="pg-value">${fmtW4(d.sale)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">仲介退 ( 買服 )</div><div class="pg-value">${fmtW4(d.rebate)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row pg-row-total"><div class="pg-op"></div><div class="pg-label">賣方總收入</div><div class="pg-value">${fmtW2(sellerIncome)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">服務費 ( 給仲介 )</div><div class="pg-value">${fmtW2(d.agentFee)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">房地合一稅</div><div class="pg-value">${fmtW2(d.tax)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得房屋成本</div><div class="pg-value">${fmtW2(d.buy)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得稅費總額</div><div class="pg-value">${fmtW2(d.buyCost)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row pg-row-total"><div class="pg-op"></div><div class="pg-label">賣方總收入</div><div class="pg-value">${fmtW4(sellerIncome)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">服務費 ( 給仲介 )</div><div class="pg-value">${fmtW4(d.agentFee)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">房地合一稅</div><div class="pg-value">${fmtW4(d.tax)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得房屋成本</div><div class="pg-value">${fmtW4(d.buy)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得稅費總額</div><div class="pg-value">${fmtW4(d.buyCost)}</div><div class="pg-unit">萬</div></div>
       </div>
     </div>
 
@@ -4260,7 +4292,7 @@ function renderPartyTables(d) {
         <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value"><input type="text" class="pt-input" id="pt_agent_other" value="${readPartyField('pt_agent_other')}" inputmode="numeric"></div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value">${renderPartyWanInput('pt_agent_other')}</div><div class="pg-unit">萬</div></div>
       </div>
     </div>
 
@@ -4299,6 +4331,7 @@ function renderPartyTables(d) {
       try { el.setSelectionRange(focusInfo.selStart, focusInfo.selEnd); } catch (e) {}
     }
   }
+  refreshPartyWanDisplays();
 }
 
 // === 鎖定欄位:點鎖頭切換可改/鎖定 ===
@@ -4469,6 +4502,7 @@ document.querySelectorAll('.party-tab').forEach(tab => {
     const p = tab.dataset.party;
     document.querySelectorAll('.party-tab').forEach(t => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.party-content').forEach(c => c.classList.toggle('active', c.id === 'party-' + p));
+    refreshPartyWanDisplays();
   });
 });
 
@@ -4577,6 +4611,7 @@ document.addEventListener('mouseup', (e) => {
 // === 自動儲存 / 還原機制 ===
 window.addEventListener('resize', () => {
   if (typeof window.__applyDesktopScale === 'function') window.__applyDesktopScale();
+  refreshPartyWanDisplays();
   if (typeof autoFitDashNumbers === 'function') autoFitDashNumbers();
   if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers();
   if (typeof autoFitBannerNumbers === 'function') autoFitBannerNumbers();
@@ -5007,8 +5042,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
     const fmtN = v => Math.round(v).toLocaleString();
     const fmtW4 = v => (Math.round(v) / 10000).toFixed(4);
-    const fmtW2 = fmtWan2Rounded;
-
+  
     // ===== 買方 =====
     // 預售買方:成交價 + 服務費 = 總支出
     // 細項:換約款(給屋主)=換約價差, 未付款(給建商)=未付款,
@@ -5025,13 +5059,13 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
           <div class="pg-row">
             <div class="pg-op pg-op-add">加</div>
             <div class="pg-label">成交價</div>
-            <div class="pg-value">${fmtW2(d.sale)}</div>
+            <div class="pg-value">${fmtW4(d.sale)}</div>
             <div class="pg-unit">萬</div>
           </div>
           <div class="pg-row">
             <div class="pg-op pg-op-add">加</div>
             <div class="pg-label">服務費<span class="pg-rate-tag">${buyerRatePct}%</span></div>
-            <div class="pg-value">${fmtW2(d.buyerFee)}</div>
+            <div class="pg-value">${fmtW4(d.buyerFee)}</div>
             <div class="pg-unit">萬</div>
           </div>
         </div>
@@ -5051,19 +5085,19 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
           <div class="pg-row">
             <div class="pg-op"></div>
             <div class="pg-label">服務費 ( 給仲介 )</div>
-            <div class="pg-value">${fmtW2(d.buyerFee)}</div>
+            <div class="pg-value">${fmtW4(d.buyerFee)}</div>
             <div class="pg-unit">萬</div>
           </div>
           <div class="pg-row">
             <div class="pg-op"></div>
             <div class="pg-label">換約款 ( 給屋主 )</div>
-            <div class="pg-value">${fmtW2(d.ownerSwap)}</div>
+            <div class="pg-value">${fmtW4(d.ownerSwap)}</div>
             <div class="pg-unit">萬</div>
           </div>
           <div class="pg-row">
             <div class="pg-op"></div>
             <div class="pg-label">未付款 ( 給建商 )</div>
-            <div class="pg-value">${fmtW2(d.unpaid)}</div>
+            <div class="pg-value">${fmtW4(d.unpaid)}</div>
             <div class="pg-unit">萬</div>
           </div>
         </div>
@@ -5076,7 +5110,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
           <div class="pg-row">
             <div class="pg-op"></div>
             <div class="pg-label">貸款成數 <span class="pg-pct-text">${(truncDisplayInteger(d.loanRatePct*100)/100).toFixed(2)}%</span></div>
-            <div class="pg-value">${fmtW2(d.loanAmt)}</div>
+            <div class="pg-value">${fmtW4(d.loanAmt)}</div>
             <div class="pg-unit">萬</div>
           </div>
         </div>
@@ -5134,13 +5168,13 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
         <div class="pg-group pg-group-noVlabel">
           <div class="pg-rows">
-            <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">成交價</div><div class="pg-value">${fmtW2(d.sale)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">成交價</div><div class="pg-value">${fmtW4(d.sale)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">仲介退 ( 買服 )</div><div class="pg-value">${fmtW4(d.rebate)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row pg-row-total"><div class="pg-op"></div><div class="pg-label">賣方總收入</div><div class="pg-value">${fmtW2(sellerIncome)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">服務費 ( 給仲介 )</div><div class="pg-value">${fmtW2(d.sellerAgentFee)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">房地合一稅</div><div class="pg-value">${fmtW2(d.tax)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得房屋成本</div><div class="pg-value">${fmtW2(d.buy)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得稅費總額</div><div class="pg-value">${fmtW2(d.buyTaxFee)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row pg-row-total"><div class="pg-op"></div><div class="pg-label">賣方總收入</div><div class="pg-value">${fmtW4(sellerIncome)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">服務費 ( 給仲介 )</div><div class="pg-value">${fmtW4(d.sellerAgentFee)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">房地合一稅</div><div class="pg-value">${fmtW4(d.tax)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得房屋成本</div><div class="pg-value">${fmtW4(d.buy)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">取得稅費總額</div><div class="pg-value">${fmtW4(d.buyTaxFee)}</div><div class="pg-unit">萬</div></div>
           </div>
         </div>
 
@@ -5197,7 +5231,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
             <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="p_pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="p_pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="p_pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value"><input type="text" class="pt-input" id="p_pt_agent_other" value="${readPartyField('p_pt_agent_other')}" inputmode="numeric"></div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value">${renderPartyWanInput('p_pt_agent_other')}</div><div class="pg-unit">萬</div></div>
           </div>
         </div>
 
@@ -5234,6 +5268,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
         try { el.setSelectionRange(focusInfo.selStart, focusInfo.selEnd); } catch (e) {}
       }
     }
+    refreshPartyWanDisplays();
   }
 
   // 曝光成 global,讓 calcPresale 內部呼叫(以及版本切換時)
@@ -6339,6 +6374,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   function clearCkActive(){
     window.__fitLoanInput(false);
     document.querySelectorAll('.ck-active').forEach(el => el.classList.remove('ck-active'));
+    refreshPartyWanDisplays();
   }
 
   let _kbTouchMoved = false;
