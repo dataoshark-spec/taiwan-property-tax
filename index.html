@@ -3212,7 +3212,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -4008,7 +4008,7 @@ function renderFlow(d) {
   `;
   const line3b = `
     ${cell('土地漲價總數額', fmtN(d.landGain))}
-    ${d.selfUseExempt > 0 ? op('−') + cell('自用免稅', fmtN(d.selfUseExempt)) : ''}
+    ${d.selfUseExempt > 0 ? op('−') + cell('有條件自住優惠免稅額', fmtN(d.selfUseExempt)) : ''}
     ${opTrailing('=')}
   `;
   // 稅基顯示規則:
