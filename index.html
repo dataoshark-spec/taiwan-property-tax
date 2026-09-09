@@ -678,10 +678,10 @@
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
-  /* 數值置中：完成時依右側單位保留空間；輸入時使用整框對稱留白。 */
+  /* 短數值置中整個框；長數值僅在避免碰到單位時調整位置。 */
   input.dash-input {
-    padding-left: var(--dash-number-gap, 6px) !important;
-    padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
+    padding-left: calc(var(--dash-number-gap, 6px) + var(--dash-number-shift, 0px)) !important;
+    padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px) - var(--dash-number-shift, 0px)) !important;
   }
   input.dash-input.ck-active { padding-left: 6px !important; padding-right: 6px !important; }
   input.dash-input.ck-active + .dash-input-suffix { visibility: hidden; }
@@ -3212,7 +3212,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.09R</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3741,12 +3741,13 @@ function autoFitDashNumbers(onlyInput = null) {
     const isDashInput = el.matches('input.dash-input');
     if (isDashInput) {
       el.style.setProperty('--dash-number-gap', '6px');
+      el.style.setProperty('--dash-number-shift', '0px');
       const suffix = el.parentElement.querySelector('.dash-input-suffix');
       const box = el.getBoundingClientRect();
       if (suffix && box.width > 0 && el.offsetWidth > 0) {
         const scaleX = box.width / el.offsetWidth;
         const borderRight = parseFloat(getComputedStyle(el).borderRightWidth) || 0;
-        // 數字在左內框至單位左緣之間置中；左右各至少6px留白。
+        // 先量出單位預留區；字級決定後再將可置中的數值向整框中心對齊。
         const reserve = Math.max(0, (box.right - suffix.getBoundingClientRect().left) / scaleX - borderRight);
         el.style.setProperty('--dash-unit-reserve', reserve + 'px');
       }
@@ -3795,6 +3796,12 @@ function autoFitDashNumbers(onlyInput = null) {
     if (isDashInput && !el.classList.contains('ck-active')) {
       mirror.style.fontSize = chosen + 'px';
       if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * Math.max(0, available - 0.5) / mirror.offsetWidth * 10) / 10);
+      // 左右 padding 總和固定，回正位置不會改變已選字級或可用寬度。
+      mirror.style.fontSize = chosen + 'px';
+      const textWidth = mirror.getBoundingClientRect().width;
+      const unitReserve = parseFloat(getComputedStyle(el).getPropertyValue('--dash-unit-reserve')) || 0;
+      const shift = Math.max(0, Math.min(unitReserve / 2, (available - textWidth) / 2));
+      el.style.setProperty('--dash-number-shift', shift + 'px');
       el.scrollLeft = 0;
     }
     el.style.setProperty('font-size', chosen + 'px', 'important');
