@@ -678,6 +678,14 @@
     padding-top: 0 !important;
     padding-bottom: 0 !important;
   }
+  /* 數值置中：完成時依右側單位保留空間；輸入時使用整框對稱留白。 */
+  input.dash-input {
+    padding-left: var(--dash-number-gap, 6px) !important;
+    padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
+  }
+  input.dash-input.ck-active { padding-left: 6px !important; padding-right: 6px !important; }
+  input.dash-input.ck-active + .dash-input-suffix { visibility: hidden; }
+
   /* dash-display 用 line-height 對齊(跟 input 一致) */
   .dash-display {
     line-height: 42px !important;
@@ -754,7 +762,7 @@
     color: #FFD58A !important;
     font-weight: 700 !important;
   }
-  #d_profit { white-space: nowrap; padding: 0 18px 0 2px !important; }
+  #d_profit { white-space: nowrap; padding: 0 calc(18px - var(--profit-shift, 0px)) 0 calc(2px + var(--profit-shift, 0px)) !important; line-height: 40px !important; }
   .dash-display.profit.neg { color: #FF9090 !important; background: #1F2F2A !important; }
   /* 級距 = 必選(用下拉選),米白底 */
   #d_rate { background: #FFFEF8 !important; }
@@ -3204,7 +3212,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.09O</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.09R</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3702,7 +3710,7 @@ function calc() {
 
 // === 自動縮放控制台主數字 ===
 // 用「鏡子 div」實測瀏覽器實際渲染寬度,跟 canvas measureText 比更準
-function autoFitDashNumbers() {
+function autoFitDashNumbers(onlyInput = null) {
   // 建立或取得共用鏡子元素(隱藏在頁面外)
   let mirror = document.getElementById('__autofit_mirror');
   if (!mirror) {
@@ -3712,11 +3720,41 @@ function autoFitDashNumbers() {
     document.body.appendChild(mirror);
   }
 
-  const targets = document.querySelectorAll('.dash-input, .dash-display');
+  // 僅調整利潤文字；左右留白總和固定20px，保留原有字級與可用寬度。
+  function alignProfitNumber(el) {
+    el.style.setProperty('--profit-shift', '0px');
+    const suffix = el.parentElement.querySelector('.dash-input-suffix');
+    const box = el.getBoundingClientRect();
+    if (!suffix || box.width <= 0 || el.offsetWidth <= 0 || !el.textContent.trim()) return;
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const textBox = range.getBoundingClientRect();
+    const scaleX = box.width / el.offsetWidth;
+    const gap = (suffix.getBoundingClientRect().left - textBox.right) / scaleX;
+    // 短數字朝相鄰輸入格的中心靠近；長數字仍保留單位間距。
+    const shift = Math.max(0, Math.min(5, gap - 4));
+    el.style.setProperty('--profit-shift', shift + 'px');
+  }
+
+  const targets = onlyInput ? [onlyInput] : document.querySelectorAll('.dash-input, .dash-display');
   targets.forEach(el => {
+    const isDashInput = el.matches('input.dash-input');
+    if (isDashInput) {
+      el.style.setProperty('--dash-number-gap', '6px');
+      const suffix = el.parentElement.querySelector('.dash-input-suffix');
+      const box = el.getBoundingClientRect();
+      if (suffix && box.width > 0 && el.offsetWidth > 0) {
+        const scaleX = box.width / el.offsetWidth;
+        const borderRight = parseFloat(getComputedStyle(el).borderRightWidth) || 0;
+        // 數字在左內框至單位左緣之間置中；左右各至少6px留白。
+        const reserve = Math.max(0, (box.right - suffix.getBoundingClientRect().left) / scaleX - borderRight);
+        el.style.setProperty('--dash-unit-reserve', reserve + 'px');
+      }
+    }
     const text = (el.tagName === 'INPUT' ? el.value : el.textContent) || '';
     if (!text || text.trim() === '' || text === '—') {
       el.style.setProperty('font-size', '17px', 'important');
+      if (el.id === 'd_profit') alignProfitNumber(el);
       return;
     }
 
@@ -3732,8 +3770,16 @@ function autoFitDashNumbers() {
     const padL = parseFloat(cs.paddingLeft) || 0;
     const padR = parseFloat(cs.paddingRight) || 0;
     // 預留 suffix(萬/%)寬度 + 安全 gap
-    const available = el.clientWidth - padL - padR - (el.id === 'd_profit' ? 0 : 14);
+    let available = el.clientWidth - padL - padR - (isDashInput || el.id === 'd_profit' ? 0 : 14);
     if (available <= 0) return;
+    if (isDashInput && !el.classList.contains('ck-active')) {
+      mirror.style.fontSize = '10px';
+      if (mirror.offsetWidth > available) {
+        // 長數字先縮減兩邊等量留白，保留完整數字與單位的間距。
+        el.style.setProperty('--dash-number-gap', '2px');
+        available += 8;
+      }
+    }
 
     // 從 17px 往下找最大塞得下的字級
     let chosen = 10;
@@ -3746,7 +3792,13 @@ function autoFitDashNumbers() {
       mirror.style.fontSize = chosen + 'px';
       if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * available / mirror.offsetWidth * 10) / 10);
     }
+    if (isDashInput && !el.classList.contains('ck-active')) {
+      mirror.style.fontSize = chosen + 'px';
+      if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * Math.max(0, available - 0.5) / mirror.offsetWidth * 10) / 10);
+      el.scrollLeft = 0;
+    }
     el.style.setProperty('font-size', chosen + 'px', 'important');
+    if (el.id === 'd_profit') alignProfitNumber(el);
   });
 }
 
@@ -4700,10 +4752,11 @@ document.querySelectorAll('input[type="number"]').forEach(el => {
   if (el.id !== 'd_target' && el.id !== 'p_target') el.setAttribute('min', '0');
   if (el.readOnly) return;
   el.addEventListener('focus', function() {
-    setTimeout(() => this.select(), 0);
+    // 自訂計算機稍後會設為readonly；全選不可把長算式拉回開頭。
+    setTimeout(() => { if (!this.readOnly) this.select(); }, 0);
   });
   el.addEventListener('click', function() {
-    this.select();
+    if (!this.readOnly) this.select();
   });
 });
 
@@ -5449,6 +5502,8 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       if (typeof renderFlowPresale === 'function') renderFlowPresale(d);
       if (typeof renderPartyPresale === 'function') renderPartyPresale(d);
     }
+    // 預售切換、還原與計算完成後，同步依目前欄位內容更新字級。
+    autoFitDashNumbers();
   }
 
   // 綁定 input change
@@ -6140,6 +6195,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     input.dispatchEvent(new Event('change', {bubbles:true}));
     input.dataset.ckOrigValue = input.value;
     draftSnapshot = captureDraftState(input);
+    refreshDashInputFont(input);
     if (keepEditing) draftCommitted = false;
   }
 
@@ -6200,13 +6256,21 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     return (Math.round(v * 10000) / 10000).toString();
   }
 
+  // 草稿只更新本格字級，不發出輸入事件或重算、保存尚未確認的數值。
+  function refreshDashInputFont(input){
+    if (input && input.isConnected && input.classList.contains('dash-input')) autoFitDashNumbers(input);
+  }
+
   // 把目前 expr 即時顯示在「欄位本身」(欄位就是計算機螢幕)
   function refreshField(isResult=false){
     if (!targetInput) return;
     const loan = targetInput.id === 'pt_loan_rate';
     targetInput.value = loan ? expr.replace(/\*/g,'×').replace(/\//g,'÷').replace(/-/g,'−') : expr;
     if (loan) window.__fitLoanInput(!isResult && expr !== '');
-    else targetInput.scrollLeft = targetInput.scrollWidth;
+    else {
+      refreshDashInputFont(targetInput);
+      targetInput.scrollLeft = targetInput.scrollWidth;
+    }
   }
 
   // 把指定欄位捲動到鍵盤上方的可視區(避免被鍵盤遮住)
@@ -6292,9 +6356,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }
     clearInputError();
     resetKbGestureState();
-    // 先關掉前一格的高亮
-    document.querySelectorAll('.ck-active')
-      .forEach(el => el.classList.remove('ck-active'));
+    // 關掉前一格高亮後，以完成狀態的單位留白重新量字。
+    document.querySelectorAll('.ck-active').forEach(el => {
+      el.classList.remove('ck-active');
+      refreshDashInputFont(el);
+    });
     targetInput = input;
     // 記住原本的 type 與原值(若使用者沒輸入就關閉,要還原原值)
     if (!input.dataset.ckOrigType) input.dataset.ckOrigType = input.type || 'text';
@@ -6316,6 +6382,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
     if (input.id === 'pt_loan_rate') window.__fitLoanInput(false);
+    else refreshDashInputFont(input);
     scrollIntoView(pctWrap || input);
   }
 
@@ -6365,6 +6432,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       targetInput.value = finalVal;
       draftCommitted = true;
       draftSnapshot = captureDraftState(targetInput);
+      refreshDashInputFont(targetInput);
       return true;
     }
     dispatchCommittedValue(targetInput, finalVal);
@@ -6375,6 +6443,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     window.__fitLoanInput(false);
     document.querySelectorAll('.ck-active').forEach(el => el.classList.remove('ck-active'));
     refreshPartyWanDisplays();
+    refreshDashInputFont(targetInput);
   }
 
   let _kbTouchMoved = false;
