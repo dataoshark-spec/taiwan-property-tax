@@ -685,9 +685,9 @@
   }
   input.dash-input.ck-active { padding-left: 6px !important; padding-right: 6px !important; }
   input.dash-input.ck-active + .dash-input-suffix { visibility: hidden; }
-  /* 指定六種欄位：確認後扣掉單位區域置中；輸入中以整個框置中。 */
+  /* 指定六種欄位：輸入中與確認後都以整個框置中；確認後左右對稱保留單位空間。 */
   input.dash-input.unit-centered {
-    padding-left: var(--dash-number-gap, 6px) !important;
+    padding-left: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
     padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
   }
   input.dash-input.unit-centered.ck-active:not(.ck-input-error) {
@@ -3221,7 +3221,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10E</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3750,7 +3750,7 @@ function autoFitDashNumbers(onlyInput = null) {
     const isDashInput = el.matches('input.dash-input');
     const isUnitCentered = isDashInput && el.classList.contains('unit-centered');
     if (isDashInput) {
-      el.style.setProperty('--dash-number-gap', '6px');
+      el.style.setProperty('--dash-number-gap', isUnitCentered && !el.classList.contains('ck-active') ? '2px' : '6px');
       el.style.setProperty('--dash-number-shift', '0px');
       const suffix = el.parentElement.querySelector('.dash-input-suffix');
       const box = el.getBoundingClientRect();
@@ -3790,8 +3790,9 @@ function autoFitDashNumbers(onlyInput = null) {
       mirror.style.fontSize = '10px';
       if (mirror.offsetWidth > available) {
         // 長數字先縮減兩邊等量留白，保留完整數字與單位的間距。
+        const previousGap = parseFloat(el.style.getPropertyValue('--dash-number-gap')) || 6;
         el.style.setProperty('--dash-number-gap', '2px');
-        available += 8;
+        available += Math.max(0, previousGap - 2) * 2;
       }
     }
 

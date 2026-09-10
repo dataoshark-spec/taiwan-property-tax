@@ -1,6 +1,6 @@
 // 最小 Service Worker — 滿足 Chrome PWA 安裝條件 + 離線快取
 const CACHE_PREFIX = 'fwTax-' + encodeURIComponent(self.registration.scope) + '-';
-const CACHE = CACHE_PREFIX + '2026.09.10D';
+const CACHE = CACHE_PREFIX + '2026.09.10E';
 const ASSETS = [
   './',
   './index.html',
