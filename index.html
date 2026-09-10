@@ -685,10 +685,14 @@
   }
   input.dash-input.ck-active { padding-left: 6px !important; padding-right: 6px !important; }
   input.dash-input.ck-active + .dash-input-suffix { visibility: hidden; }
-  /* 指定六種欄位：扣掉單位區域後置中，輸入中與完成後使用同一中心。 */
+  /* 指定六種欄位：確認後扣掉單位區域置中；輸入中以整個框置中。 */
   input.dash-input.unit-centered {
     padding-left: var(--dash-number-gap, 6px) !important;
     padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
+  }
+  input.dash-input.unit-centered.ck-active:not(.ck-input-error) {
+    padding-left: var(--dash-number-gap, 6px) !important;
+    padding-right: var(--dash-number-gap, 6px) !important;
   }
 
   /* dash-display 用 line-height 對齊(跟 input 一致) */
@@ -3217,7 +3221,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3779,7 +3783,7 @@ function autoFitDashNumbers(onlyInput = null) {
     // 預留 suffix(萬/%)寬度 + 安全 gap
     let available = el.clientWidth - padL - padR - (isDashInput || el.id === 'd_profit' ? 0 : 14);
     if (available <= 0) return;
-    // 輸入中的完整數值也要容納單位留白；長算式保留原本的最小字級與捲動。
+    // 完整數值依當下可用寬度縮放；長算式保留原本的最小字級與捲動。
     const fitWholeValue = isDashInput && (!el.classList.contains('ck-active') ||
       (isUnitCentered && /^-?\d+(?:\.\d*)?$/.test(text)));
     if (fitWholeValue) {
