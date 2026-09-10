@@ -3221,7 +3221,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10E</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10F</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -7029,10 +7029,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 // 僅綁在使用者實際點擊的動作上(滿足 Chrome user-activation 規則);數字鍵輸入不震,交給系統鍵盤自身回饋。
 (function(){
   function hapticTap(){ try { if (navigator.vibrate) navigator.vibrate(10); } catch(e){} }
-  var HAPTIC_SEL = '.ver-btn, .party-tab, .rate-sheet-option, .lock-btn, .legend-lock, .collapse-section-header, .clear-btn, .restore-btn';
+  var HAPTIC_SEL = '.ver-btn, .party-tab, .tab-btn[data-tab], .tab-btn[data-ptab], #collapseBtn, #pCollapseBtn, .rate-sheet-option, .lock-btn, .legend-lock, .collapse-section-header, .clear-btn, .restore-btn';
   document.addEventListener('click', function(e){
     var t = e.target.closest ? e.target.closest(HAPTIC_SEL) : null;
-    if (t) hapticTap();
+    // 版本雙擊會連動程式收合；避免同一次手勢在箭頭再震一次。
+    if (t && !(e.isTrusted === false && t.matches('#collapseBtn, #pCollapseBtn'))) hapticTap();
   }, true);
 })();
 
