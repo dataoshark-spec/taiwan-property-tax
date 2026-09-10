@@ -685,6 +685,11 @@
   }
   input.dash-input.ck-active { padding-left: 6px !important; padding-right: 6px !important; }
   input.dash-input.ck-active + .dash-input-suffix { visibility: hidden; }
+  /* 指定六種欄位：扣掉單位區域後置中，輸入中與完成後使用同一中心。 */
+  input.dash-input.unit-centered {
+    padding-left: var(--dash-number-gap, 6px) !important;
+    padding-right: calc(var(--dash-number-gap, 6px) + var(--dash-unit-reserve, 16px)) !important;
+  }
 
   /* dash-display 用 line-height 對齊(跟 input 一致) */
   .dash-display {
@@ -2752,7 +2757,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="p_sale" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_sale" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">買方總支出</span><span class="v"><span id="p_buyer_total">—</span> 萬</span></div>
@@ -2760,7 +2765,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="p_buy" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_buy" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">取得可列舉</span><span class="v"><span id="p_buy_taxfee">—</span> 萬</span></div>
@@ -2814,7 +2819,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="p_buyer_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_buyer_rate" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="p_buyer_pct_amt">—</span> 萬</span></div>
@@ -2822,7 +2827,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="p_buyer_fixed" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_buyer_fixed" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v" id="p_buyer_pct">—</span></div>
@@ -2830,7 +2835,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="p_target" step="0.01" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_target" step="0.01" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote note-cream"><span class="k">目前利潤</span><span class="v"><span id="p_target_now">—</span> 萬</span></div>
@@ -2838,7 +2843,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="p_seller_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_seller_rate" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote note-cream"><span class="k">換算</span><span class="v"><span id="p_seller_amt">—</span> 萬</span></div>
@@ -2961,7 +2966,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="d_sale" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_sale" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">買方總支出</span><span class="v"><span id="d_buyer_total">—</span> 萬</span></div>
@@ -2969,7 +2974,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="d_buy" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_buy" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">取得可列舉</span><span class="v"><span id="d_buy_taxfee">—</span> 萬</span></div>
@@ -3003,7 +3008,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req bg-deep" id="d_buyer_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req bg-deep" id="d_buyer_rate" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="d_buyer_pct_amt">—</span> 萬</span></div>
@@ -3011,7 +3016,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="d_buyer_fixed" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="d_buyer_fixed" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v" id="d_buyer_pct">—</span></div>
@@ -3019,7 +3024,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt bg-light" id="d_target" step="0.01" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt bg-light" id="d_target" step="0.01" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">目前利潤</span><span class="v"><span id="d_target_now">—</span> 萬</span></div>
@@ -3027,7 +3032,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="d_seller_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_seller_rate" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="d_seller_amt">—</span> 萬</span></div>
@@ -3212,7 +3217,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.10C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3739,6 +3744,7 @@ function autoFitDashNumbers(onlyInput = null) {
   const targets = onlyInput ? [onlyInput] : document.querySelectorAll('.dash-input, .dash-display');
   targets.forEach(el => {
     const isDashInput = el.matches('input.dash-input');
+    const isUnitCentered = isDashInput && el.classList.contains('unit-centered');
     if (isDashInput) {
       el.style.setProperty('--dash-number-gap', '6px');
       el.style.setProperty('--dash-number-shift', '0px');
@@ -3747,7 +3753,7 @@ function autoFitDashNumbers(onlyInput = null) {
       if (suffix && box.width > 0 && el.offsetWidth > 0) {
         const scaleX = box.width / el.offsetWidth;
         const borderRight = parseFloat(getComputedStyle(el).borderRightWidth) || 0;
-        // 先量出單位預留區；字級決定後再將可置中的數值向整框中心對齊。
+        // 實測右側單位預留區；指定欄位以扣除這個區域後的中心對齊。
         const reserve = Math.max(0, (box.right - suffix.getBoundingClientRect().left) / scaleX - borderRight);
         el.style.setProperty('--dash-unit-reserve', reserve + 'px');
       }
@@ -3773,7 +3779,10 @@ function autoFitDashNumbers(onlyInput = null) {
     // 預留 suffix(萬/%)寬度 + 安全 gap
     let available = el.clientWidth - padL - padR - (isDashInput || el.id === 'd_profit' ? 0 : 14);
     if (available <= 0) return;
-    if (isDashInput && !el.classList.contains('ck-active')) {
+    // 輸入中的完整數值也要容納單位留白；長算式保留原本的最小字級與捲動。
+    const fitWholeValue = isDashInput && (!el.classList.contains('ck-active') ||
+      (isUnitCentered && /^-?\d+(?:\.\d*)?$/.test(text)));
+    if (fitWholeValue) {
       mirror.style.fontSize = '10px';
       if (mirror.offsetWidth > available) {
         // 長數字先縮減兩邊等量留白，保留完整數字與單位的間距。
@@ -3793,15 +3802,17 @@ function autoFitDashNumbers(onlyInput = null) {
       mirror.style.fontSize = chosen + 'px';
       if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * available / mirror.offsetWidth * 10) / 10);
     }
-    if (isDashInput && !el.classList.contains('ck-active')) {
+    if (fitWholeValue) {
       mirror.style.fontSize = chosen + 'px';
       if (mirror.offsetWidth > available) chosen = Math.max(1, Math.floor(chosen * Math.max(0, available - 0.5) / mirror.offsetWidth * 10) / 10);
-      // 左右 padding 總和固定，回正位置不會改變已選字級或可用寬度。
-      mirror.style.fontSize = chosen + 'px';
-      const textWidth = mirror.getBoundingClientRect().width;
-      const unitReserve = parseFloat(getComputedStyle(el).getPropertyValue('--dash-unit-reserve')) || 0;
-      const shift = Math.max(0, Math.min(unitReserve / 2, (available - textWidth) / 2));
-      el.style.setProperty('--dash-number-shift', shift + 'px');
+      if (!isUnitCentered) {
+        // 其餘欄位沿用原本的整框回正方式。
+        mirror.style.fontSize = chosen + 'px';
+        const textWidth = mirror.getBoundingClientRect().width;
+        const unitReserve = parseFloat(getComputedStyle(el).getPropertyValue('--dash-unit-reserve')) || 0;
+        const shift = Math.max(0, Math.min(unitReserve / 2, (available - textWidth) / 2));
+        el.style.setProperty('--dash-number-shift', shift + 'px');
+      }
       el.scrollLeft = 0;
     }
     el.style.setProperty('font-size', chosen + 'px', 'important');
