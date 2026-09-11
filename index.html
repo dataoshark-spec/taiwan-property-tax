@@ -2529,6 +2529,14 @@
     white-space: nowrap;
     font-size: min(7px, 9cqi);
   }
+
+/* 按鈕列跟手拖動：只限制橫向手勢，直向捲動與雙指縮放保留。 */
+.ver-switch, .ver-switch .ver-btn, .tabs, .tabs .tab-btn, .party-tabs, .party-tabs .party-tab {
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
 </style>
 <style>
 /* Approved loan percentage feedback: three flashes and a same-row message. */
@@ -3259,7 +3267,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.11A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.12A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -4627,7 +4635,7 @@ document.querySelectorAll('.party-tab').forEach(tab => {
   let x0 = 0, y0 = 0, tracking = false;
   wrap.addEventListener('touchstart', e => {
     // 起點在可輸入欄位上 → 不偵測滑動(避免改數字時誤觸翻頁)
-    if (e.target.closest('input, .pt-input, button')) { tracking = false; return; }
+    if (e.target.closest('input, .pt-input, button, .party-tabs')) { tracking = false; return; }
     if (e.touches.length !== 1) { tracking = false; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; tracking = true;
   }, { passive: true });
@@ -5704,8 +5712,18 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   }
   // 雙擊「當前已在的版本鈕」→ 全展開/全收合;單擊已在的版本 → 回頂;單擊另一版 → 切版
   let _verLastClk = 0, _verLastBtn = null, _verWasActive = false;
+  function resetVersionClick() { _verLastClk = 0; _verLastBtn = null; _verWasActive = false; }
+  document.querySelector('.ver-switch').addEventListener('navdragstart', resetVersionClick);
   btns.forEach(b => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (event) => {
+      if (event.__navDrag) {
+        resetVersionClick();
+        if (!b.classList.contains('active')) {
+          blockedStorageKeys.delete(KEY);
+          apply(b.dataset.ver);
+        }
+        return;
+      }
       const now = Date.now();
       const wasActive = b.classList.contains('active');
       const dbl = (b === _verLastBtn) && (now - _verLastClk < 350);
@@ -7144,6 +7162,115 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     });
   });
 })();
+
+// 按鈕列按住拖動：命中按鈕即沿用原點擊流程；放開保留最後成功選項。
+(function bindNavigationDrag() {
+  if (!window.PointerEvent) return;
+  const groups = [
+    ['.ver-switch', '.ver-btn[data-ver]'],
+    ['.tabs', '.tab-btn[data-tab]'],
+    ['.tabs', '.tab-btn[data-ptab]'],
+    ['.party-tabs', '.party-tab[data-party]']
+  ].flatMap(([selector, buttons]) => Array.from(document.querySelectorAll(selector))
+    .filter(bar => bar.querySelector(buttons)).map(bar => ({ bar, buttons })));
+  const pointers = new Set(), blockedPointers = new Set();
+  let drag = null, clickGuardUntil = 0;
+  function context(group) {
+    return [document.body.classList.contains('is-preview'),
+      ...Array.from(group.bar.querySelectorAll(group.buttons), b => b.classList.contains('active')),
+      document.getElementById('partySection')?.classList.contains('open')].join('|');
+  }
+  function finish(blockClick) {
+    const g = drag;
+    drag = null;
+    if (blockClick || g?.moved) {
+      clickGuardUntil = Date.now() + 650;
+      pointers.forEach(id => blockedPointers.add(id));
+      if (g) g.group.bar.dispatchEvent(new Event('navdragstart'));
+    }
+    if (g) {
+      try { if (g.group.bar.hasPointerCapture(g.id)) g.group.bar.releasePointerCapture(g.id); } catch (_) {}
+    }
+  }
+  // 必須早於文件層的草稿確認、震動和鍵盤外部點擊處理。
+  window.addEventListener('click', e => {
+    if (!e.__navDrag && e.detail !== 0 && Date.now() < clickGuardUntil) {
+      e.preventDefault(); e.stopImmediatePropagation();
+    }
+  }, true);
+  window.addEventListener('pointerdown', e => {
+    blockedPointers.delete(e.pointerId);
+    pointers.add(e.pointerId);
+    if (pointers.size !== 1) { if (drag) finish(true); return; }
+    // 新按壓是下一個獨立操作，不阻擋拖動後正常點擊。
+    clickGuardUntil = 0;
+    if (!e.isPrimary || e.button !== 0 || document.hidden) return;
+    const group = groups.find(g => e.target instanceof Element && g.bar.contains(e.target));
+    if (!group || !group.bar.getClientRects().length) return;
+    drag = { id: e.pointerId, group, x: e.clientX, y: e.clientY,
+      moved: false, horizontal: false, state: context(group) };
+  }, true);
+  window.addEventListener('pointermove', e => {
+    const g = drag;
+    if (!g || e.pointerId !== g.id) return;
+    if (document.hidden || pointers.size !== 1 || context(g.group) !== g.state
+      || !g.group.bar.getClientRects().length || (e.pointerType === 'mouse' && !(e.buttons & 1))) {
+      finish(true); return;
+    }
+    const dx = Math.abs(e.clientX - g.x), dy = Math.abs(e.clientY - g.y);
+    if (!g.horizontal) {
+      if (Math.max(dx, dy) < 8) return;
+      g.moved = true;
+      if (dy >= 8 && dy >= dx) { finish(true); return; }
+      if (dx < dy * 1.4) return;
+      g.horizontal = true;
+      g.group.bar.dispatchEvent(new Event('navdragstart'));
+      try { g.group.bar.setPointerCapture(e.pointerId); } catch (_) {}
+    }
+    const r = g.group.bar.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+      finish(true); return;
+    }
+    if (e.cancelable) e.preventDefault();
+    const button = Array.from(g.group.bar.querySelectorAll(g.group.buttons)).find(b => {
+      const r = b.getBoundingClientRect();
+      return !b.disabled && e.clientX >= r.left && e.clientX <= r.right
+        && e.clientY >= r.top && e.clientY <= r.bottom;
+    });
+    if (!button || button.classList.contains('active')) return;
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+    click.__navDrag = true;
+    // 草稿失敗時，原捕獲處理會取消 click：整段拖動立即停止，不能再換到別頁。
+    const accepted = button.dispatchEvent(click);
+    if (!accepted || !button.classList.contains('active')) { finish(true); return; }
+    g.state = context(g.group);
+  }, { capture: true, passive: false });
+  window.addEventListener('pointerup', e => {
+    pointers.delete(e.pointerId);
+    if (blockedPointers.delete(e.pointerId)) clickGuardUntil = Date.now() + 650;
+    if (drag?.id === e.pointerId) finish(false);
+  }, true);
+  window.addEventListener('pointercancel', e => {
+    pointers.delete(e.pointerId);
+    if (blockedPointers.delete(e.pointerId)) clickGuardUntil = Date.now() + 650;
+    if (drag?.id === e.pointerId) finish(true);
+  }, true);
+  groups.forEach(({ bar }) => {
+    bar.addEventListener('lostpointercapture', e => {
+      if (e.target === bar && drag?.id === e.pointerId && !bar.hasPointerCapture(e.pointerId)) finish(true);
+    });
+    // 保留直向捲動；已辨識的橫向拖動不再交給原生觸控或長按選字。
+    bar.addEventListener('touchmove', e => {
+      if (drag?.group.bar === bar && drag.horizontal && e.cancelable) e.preventDefault();
+    }, { passive: false });
+  });
+  function cancel() { if (drag) finish(true); pointers.clear(); blockedPointers.clear(); }
+  window.addEventListener('blur', cancel);
+  window.addEventListener('resize', cancel);
+  window.addEventListener('pagehide', cancel);
+  document.addEventListener('visibilitychange', cancel);
+})();
+
 
 // === 觸覺回饋:動作按鈕輕震(10ms) ===
 // Android Chrome / 安裝為 PWA 有效;iOS 無 Vibration API,feature detection 後自動略過、不報錯。
