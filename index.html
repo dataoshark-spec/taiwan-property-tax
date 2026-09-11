@@ -24,7 +24,9 @@
     return zoomOk;
   }
   function applyDesktopScale(){
-    var z = window.innerWidth >= MIN_W ? SCALE : 1;
+    var width = document.documentElement.getBoundingClientRect().width || document.documentElement.clientWidth || window.innerWidth;
+    var desktopPointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    var z = desktopPointer && width >= MIN_W ? Math.min(SCALE, width / DESIGN) : 1;
     var useZoom = z > 1 && detectZoomSupport();
     document.documentElement.style.setProperty('--app-scale', String(z));
     var shell = document.getElementById('appShell');
@@ -2624,15 +2626,7 @@
     requestAnimationFrame(()=>{
       if(!input.isConnected)return;
       input.scrollLeft=draft?input.scrollWidth:0;
-      const keyboard=document.getElementById('calcKb');
-      if(input.classList.contains('ck-active') && keyboard.classList.contains('show')){
-        const bounds=box.getBoundingClientRect();
-        const safeTop=document.querySelector('.sticky-top').getBoundingClientRect().bottom+12;
-        const safeBottom=keyboard.getBoundingClientRect().top-24;
-        if(bounds.bottom>safeBottom || bounds.top<safeTop){
-          window.scrollBy({top:bounds.bottom-Math.max(safeTop+bounds.height,safeBottom),behavior:'instant'});
-        }
-      }
+      if(window.__ensureCalcFieldVisible) window.__ensureCalcFieldVisible(input);
     });
   };
   let resizeFrame=0;
@@ -2686,6 +2680,48 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 @keyframes ck-input-error-flash {0%,100%{opacity:1;}50%{opacity:.4;}}
 @media(prefers-reduced-motion:reduce){input.ck-input-error-flash{animation:none!important;}}
 </style>
+<style id="header-mobile-layout">
+  /* 上緣延續 APP 主題色；只有下方漸層隨成屋／預售切換。 */
+  :root { --app-safe-top: env(safe-area-inset-top, 0px); }
+  body::before {
+    content: ''; position: fixed; top: 0; left: 0; right: 0;
+    height: var(--app-safe-top); background: #1F2F2A;
+    z-index: 1000; pointer-events: none;
+  }
+  .header-hero {
+    --hero-safe-top: var(--app-safe-top);
+    --hero-main: #0F6E56;
+    --hero-light: #26977B;
+    --hero-deep: #0B5947;
+    background:
+      linear-gradient(to bottom, #1F2F2A 0px, #1F2F2A calc(var(--hero-safe-top) + 4px),
+        rgba(31,47,42,.92) calc(var(--hero-safe-top) + 24px), rgba(31,47,42,.48) calc(var(--hero-safe-top) + 62px),
+        rgba(31,47,42,0) calc(var(--hero-safe-top) + 112px)),
+      linear-gradient(118deg, var(--hero-light) 0%, var(--hero-main) 47%, var(--hero-deep) 100%);
+  }
+  body.is-preview .header-hero {
+    --hero-main: #2C5586;
+    --hero-light: #3E7EA7;
+    --hero-deep: #224669;
+  }
+  .header-hero > .header,
+  body.is-preview .header-hero > .header,
+  .header-hero > .safety-bar,
+  .header-hero .safety-cell:not(.abnormal) { background: transparent; }
+  .header-hero > .header { padding-top: calc(18px + var(--hero-safe-top)); }
+  .header-hero .clear-btn, body.is-preview .header-hero .clear-btn {
+    background: rgba(0,0,0,.22);
+    border-color: rgba(255,213,138,.45);
+  }
+  .header-hero .clear-btn:hover, body.is-preview .header-hero .clear-btn:hover {
+    background: rgba(0,0,0,.32);
+    border-color: rgba(255,213,138,.65);
+  }
+  .header-hero .clear-btn:active, body.is-preview .header-hero .clear-btn:active { background: rgba(0,0,0,.42); }
+  body.calc-header-flow .sticky-top { position: relative; top: auto; }
+  .calc-kb-keys { grid-auto-rows: var(--calc-row-height, 56px); gap: var(--calc-key-gap, 8px); }
+  .ck-done { height: calc(var(--calc-row-height, 56px) - 4px); }
+</style>
 </head>
 <body>
 
@@ -2705,6 +2741,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
 <div class="app-shell" id="appShell">
 <div class="sticky-top">
+<div class="header-hero">
   <div class="header">
     <div class="header-text">
       <h1>房地合一稅 2.0</h1>
@@ -2745,6 +2782,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     </div>
   </div>
 
+</div><!-- /.header-hero -->
   <!-- ===== 版本切換 ===== -->
   <div class="ver-switch">
     <button class="ver-btn active" data-ver="ready" type="button">成屋版</button>
@@ -3221,7 +3259,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.10F</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.11A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6296,26 +6334,86 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     }
   }
 
-  // 把指定欄位捲動到鍵盤上方的可視區(避免被鍵盤遮住)
-  function scrollIntoView(el){
-    if (!el) return;
-    // 等鍵盤動畫展開後再量,確保 kb.offsetHeight 正確
-    setTimeout(() => {
-      // 換欄、切版或收起後，舊欄位的延遲捲動不得作用到新畫面。
-      if (!kb.classList.contains('show') || !targetInput || !el.isConnected
-          || (el !== targetInput && !el.contains(targetInput)) || !el.getClientRects().length) return;
-      const kbH = kb.offsetHeight || 360;
-      const vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      const kbTop = vh - kbH;        // 鍵盤上緣
-      const safeTop = 80;            // 上方(標題列)保留空間
-      const r = el.getBoundingClientRect();
-      // 欄位被鍵盤遮到、或太靠上時,捲動讓它停在鍵盤上方一點
-      if (r.bottom > kbTop - 16 || r.top < safeTop){
-        const desiredBottom = kbTop - 24;        // 欄位底部落在鍵盤上緣上方 24px
-        window.scrollBy({ top: r.bottom - desiredBottom, behavior: 'smooth' });
-      }
-    }, 80);
+  // 共用可視區定位：數字、標籤、貸款成數都使用同一個排程。
+  const stickyHeader = document.querySelector('.sticky-top');
+  let visibilityGeneration = 0, visibilityFrame = null, visibilityTimer = null;
+  function fieldBounds(input){
+    const box = input.closest('.pg-pct-input') || input;
+    const rect = box.getBoundingClientRect();
+    const label = input.closest('.dash-cell')?.querySelector('.dash-label');
+    const row = input.closest('.loan-input-row');
+    const labelRect = label?.getBoundingClientRect();
+    const rowRect = row?.getBoundingClientRect();
+    const top = Math.min(rect.top, labelRect?.top ?? rect.top);
+    const bottom = Math.max(rect.bottom, rowRect?.bottom ?? rect.bottom);
+    return {top, bottom, height:bottom-top};
   }
+  function stopFieldVisibility(){
+    ++visibilityGeneration;
+    if(visibilityFrame !== null) cancelAnimationFrame(visibilityFrame);
+    clearTimeout(visibilityTimer);
+    visibilityFrame = visibilityTimer = null;
+    window.removeEventListener('resize', onFieldViewport);
+    window.visualViewport?.removeEventListener('resize', onFieldViewport);
+    window.visualViewport?.removeEventListener('scroll', onFieldViewport);
+  }
+  function bindFieldViewport(){
+    window.addEventListener('resize', onFieldViewport);
+    window.visualViewport?.addEventListener('resize', onFieldViewport);
+    window.visualViewport?.addEventListener('scroll', onFieldViewport);
+  }
+  function onFieldViewport(){ scrollIntoView(targetInput); }
+  function scrollIntoView(el){
+    if(!el || !targetInput || (el!==targetInput && !el.contains(targetInput)) || !kb.classList.contains('show')) return;
+    const generation = visibilityGeneration, input = targetInput;
+    if(visibilityFrame !== null) cancelAnimationFrame(visibilityFrame);
+    clearTimeout(visibilityTimer);
+    function adjust(){
+      visibilityFrame = null;
+      if(generation!==visibilityGeneration || targetInput!==input || !kb.classList.contains('show')
+          || !input.isConnected || !input.getClientRects().length) return;
+      const viewport = window.visualViewport;
+      const viewportTop = viewport?.offsetTop || 0;
+      const safeInset = parseFloat(getComputedStyle(document.body,'::before').height) || 0;
+      const visibleTop = viewportTop + safeInset;
+      const visibleBottom = viewportTop + (viewport?.height || window.innerHeight);
+      const bounds = fieldBounds(input);
+      // 只有可視高度不足時壓縮六列；依現有內距及安全區量測，不套固定手機型號。
+      const gridStyle = getComputedStyle(document.getElementById('calcKbKeys'));
+      const rowHeight = parseFloat(gridStyle.gridAutoRows) || 56;
+      const currentGap = parseFloat(gridStyle.rowGap) || 8;
+      const chromeHeight = kb.getBoundingClientRect().height-rowHeight*6-currentGap*5;
+      const maxKeyboardHeight = visibleBottom-visibleTop-bounds.height-36;
+      const gap = maxKeyboardHeight < chromeHeight+44*6+8*5 ? 4 : 8;
+      const row = Math.min(56,Math.max(28,Math.floor((maxKeyboardHeight-chromeHeight-gap*5)/6)));
+      kb.style.setProperty('--calc-row-height',row+'px');
+      kb.style.setProperty('--calc-key-gap',gap+'px');
+      const keyboard = kb.getBoundingClientRect();
+      // 展開途中先用面板的最終位置，避免動畫過半後又捲一次。
+      const transformY = new DOMMatrixReadOnly(getComputedStyle(kb).transform).m42;
+      const keyboardTop = Math.min(visibleBottom, keyboard.top-transformY);
+      document.body.style.paddingBottom = (keyboard.height+40)+'px';
+      const headerHeight = stickyHeader.getBoundingClientRect().height;
+      const naturallyPinned = !document.body.classList.contains('is-app-scaled-transform');
+      const needFlow = naturallyPinned && keyboardTop-visibleTop-headerHeight-36 < bounds.height;
+      document.body.classList.toggle('calc-header-flow', needFlow);
+      const pinned = getComputedStyle(stickyHeader).position === 'sticky';
+      const top = Math.max(visibleTop, pinned ? stickyHeader.getBoundingClientRect().bottom : visibleTop)+12;
+      const bottom = keyboardTop-24;
+      const current = fieldBounds(input);
+      let delta = 0;
+      if(current.bottom>bottom) delta = current.bottom-bottom;
+      if(current.top-delta<top) delta = current.top-top;
+      if(Math.abs(delta)>.5){
+        const maxY = Math.max(0,document.documentElement.scrollHeight-window.innerHeight);
+        window.scrollTo({left:window.scrollX,top:Math.max(0,Math.min(maxY,window.scrollY+delta)),behavior:'instant'});
+      }
+    }
+    visibilityFrame = requestAnimationFrame(adjust);
+    // 字級與手機地址列可能晚一幀改變；同輪、同欄位才允許重測。
+    visibilityTimer = setTimeout(adjust, 300);
+  }
+  window.__ensureCalcFieldVisible = scrollIntoView;
 
   // 留白與必要的頁面回位跟隨鍵盤實際的 CSS 動畫進度，不在收完後才跳回。
   let kbCloseFrame = null;
@@ -6324,10 +6422,26 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     ++kbCloseGeneration;
     if (kbCloseFrame !== null) cancelAnimationFrame(kbCloseFrame);
     kbCloseFrame = null;
+    stickyHeader.style.removeProperty("transform");
   }
   function startKbCloseMotion(){
+    stopFieldVisibility();
     cancelKbCloseMotion();
     const generation = kbCloseGeneration;
+    const lastInput = targetInput && (document.getElementById(targetInput.id) || targetInput);
+    const lastBounds = lastInput && lastInput.isConnected && lastInput.getClientRects().length ? fieldBounds(lastInput) : null;
+    const headerWasFlow = document.body.classList.contains('calc-header-flow');
+    const headerTop = stickyHeader.getBoundingClientRect().top;
+    document.body.classList.remove('calc-header-flow');
+    const restoredHeader = stickyHeader.getBoundingClientRect();
+    const pinned = getComputedStyle(stickyHeader).position === 'sticky';
+    const headerScale = restoredHeader.height / (stickyHeader.offsetHeight || restoredHeader.height);
+    const headerShift = headerWasFlow && pinned ? Math.max(-restoredHeader.height, Math.min(0, headerTop-restoredHeader.top)) / headerScale : 0;
+    // 頁首和頁面回位沿用同一動畫進度，結束後不再補一次捲動。
+    const finalHeaderBottom = Math.max(restoredHeader.bottom, (window.visualViewport?.offsetTop || 0)+restoredHeader.height);
+    const fieldEndY = headerWasFlow && pinned && lastBounds
+      ? Math.max(0, window.scrollY + lastBounds.top - finalHeaderBottom - 12) : Infinity;
+    if(headerShift) stickyHeader.style.transform = 'translateY('+headerShift+'px)';
     const height = kb.getBoundingClientRect().height;
     const startOffset = kb.getBoundingClientRect().bottom - window.innerHeight;
     const hiddenOffset = height * 1.1; // 與 CSS translateY(110%) 相同。
@@ -6337,6 +6451,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (!startPadding || hiddenOffset - startOffset < 0.5 ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.body.style.paddingBottom = '';
+      stickyHeader.style.removeProperty('transform');
+      if(window.scrollY > fieldEndY) window.scrollTo({left:window.scrollX,top:fieldEndY,behavior:'instant'});
       return;
     }
     let startY = null, lastY = null, followScroll = true;
@@ -6352,13 +6468,16 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       // 導覽或使用者自行捲動優先，後續畫格不搶回原位置。
       if (lastY !== null && Math.abs(window.scrollY - lastY) > 2) followScroll = false;
       const currentPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
-      const endY = Math.min(startY, Math.max(0,
+      const sameFieldVisible = lastInput && lastInput.isConnected && lastInput.getClientRects().length;
+      const endY = Math.min(startY, sameFieldVisible ? fieldEndY : Infinity, Math.max(0,
         document.documentElement.scrollHeight - window.innerHeight - currentPadding));
       const finished = progress >= 0.999;
       document.body.style.paddingBottom = finished ? '' : (startPadding * (1 - progress)) + 'px';
       if (followScroll && endY < startY) {
         window.scrollTo({left: window.scrollX, top: finished ? endY : startY + (endY - startY) * progress, behavior: 'instant'});
       }
+      if(finished) stickyHeader.style.removeProperty('transform');
+      else if(headerShift) stickyHeader.style.transform = 'translateY('+(headerShift*(1-progress))+'px)';
       lastY = window.scrollY;
       kbCloseFrame = finished ? null : requestAnimationFrame(frame);
     }
@@ -6377,6 +6496,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       input = document.getElementById(nextId);
       if (!input || !canOpenKb(input)) return;
     }
+    stopFieldVisibility();
     clearInputError();
     resetKbGestureState();
     // 關掉前一格高亮後，以完成狀態的單位留白重新量字。
@@ -6406,6 +6526,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
     if (input.id === 'pt_loan_rate') window.__fitLoanInput(false);
     else refreshDashInputFont(input);
+    bindFieldViewport();
     scrollIntoView(pctWrap || input);
   }
 
