@@ -1,13 +1,13 @@
 // 最小 Service Worker — 滿足 Chrome PWA 安裝條件 + 離線快取
 const CACHE_PREFIX = 'fwTax-' + encodeURIComponent(self.registration.scope) + '-';
-const CACHE = CACHE_PREFIX + '2026.09.12C-399fb454';
+const CACHE = CACHE_PREFIX + '2026.09.12B';
 const ASSETS = [
   './',
   './index.html',
-  './manifest.json?v=2026.09.12C-399fb454',
-  './icon-192.png?v=2026.09.12C-399fb454',
-  './icon-512.png?v=2026.09.12C-399fb454',
-  './icon-180.png?v=2026.09.12C-399fb454'
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png',
+  './icon-180.png'
 ];
 
 self.addEventListener('install', (e) => {
