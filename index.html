@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.13A-input-focus">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.13A-input-focus">
+<link rel="manifest" href="manifest.json?v=2026.09.13B-input-gesture">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.13B-input-gesture">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.13A-input-focus">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.13B-input-gesture">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -457,6 +457,25 @@
   .neg-toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+  /* Page-only negative feedback reserves its own row after the source group. */
+  .neg-notice-space { box-sizing: border-box; margin: 8px 0; min-width: 0; }
+  .neg-toast.neg-toast-inline {
+    position: static; inset: auto; transform: none;
+    width: max-content; max-width: min(100%, 50vw) !important;
+    box-sizing: border-box; margin: 0 auto; text-align: center;
+  }
+  .input-table tr.neg-notice-space { display: table-row; margin: 0; }
+  .input-table tr.neg-notice-space > td {
+    display: table-cell; width: auto; padding: 8px 0;
+    border: 0; border-radius: 0; background: transparent;
+  }
+  @media (max-width: 420px) {
+    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space { display: block; margin: 0 0 8px; }
+    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space > td {
+      display: block; width: 100%; padding: 0;
+      border: 0; border-radius: 0; background: transparent;
+    }
   }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
@@ -3377,7 +3396,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.13A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.13B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -4849,9 +4868,47 @@ document.addEventListener('input', (e) => {
 // 提示只保存暫時 UI 狀態，不參與欄位提交或保存資料。
 const negativeNoticeUI = (() => {
   let revision = 0, message = null, timer = null, positionFrame = null;
+  let pageSpace = null, pagePointerRevision = 0;
+  const pagePointers = new Map(), heldPageSpaces = new Set();
+  function releasePageSpace(){
+    const space = pageSpace;
+    pageSpace = null;
+    if (space && pagePointers.size) {
+      // The notice still expires on time; its row cannot move under a held pointer.
+      if (!heldPageSpaces.has(space)) space.style.height = space.offsetHeight + 'px';
+      heldPageSpaces.add(space);
+      return;
+    }
+    if (space) space.remove();
+    heldPageSpaces.delete(space);
+  }
+  function releaseHeldPageSpaces(){
+    if (pagePointers.size) return;
+    for (const space of heldPageSpaces) {
+      space.remove();
+      if (pageSpace === space) pageSpace = null;
+    }
+    heldPageSpaces.clear();
+  }
+  document.addEventListener('pointerdown', e => {
+    if (pageSpace || heldPageSpaces.size) pagePointers.set(e.pointerId, ++pagePointerRevision);
+  }, true);
+  function finishPagePointer(e){
+    if (!pagePointers.has(e.pointerId)) return;
+    const pointerRevision = pagePointers.get(e.pointerId);
+    // Compatibility mouseup/click must finish against the original layout first.
+    setTimeout(() => {
+      if (pagePointers.get(e.pointerId) === pointerRevision) pagePointers.delete(e.pointerId);
+      releaseHeldPageSpaces();
+    }, 0);
+  }
+  document.addEventListener('pointerup', finishPagePointer, true);
+  document.addEventListener('pointercancel', finishPagePointer, true);
+  window.addEventListener('blur', () => { pagePointers.clear(); releaseHeldPageSpaces(); });
   const mode = () => document.body.classList.contains('is-preview') ? 'preview' : 'ready';
   const strip = () => document.getElementById('calcKbNotice');
   function clear(){
+    if (pageSpace && pagePointers.size) releasePageSpace();
     clearTimeout(timer); timer = null; message = null;
     if (positionFrame !== null) cancelAnimationFrame(positionFrame);
     positionFrame = null;
@@ -4860,24 +4917,31 @@ const negativeNoticeUI = (() => {
       el.classList.remove('show'); el.textContent = '';
       delete el.dataset.sourceField; delete el.dataset.sourceMode;
     });
+    releasePageSpace();
   }
   function positionPageNotice(){
     positionFrame = null;
     const toast = document.getElementById('negToast');
     if (!message || !toast?.classList.contains('show')) return;
-    const viewport = window.visualViewport;
-    const top = viewport?.offsetTop || 0;
-    const bottom = top + (viewport?.height || innerHeight);
     const source = document.getElementById(message.field);
-    const row = source?.closest('.dash-cell, .input-table tr, .loan-input-row') || source;
-    const field = row?.getBoundingClientRect();
-    const header = document.querySelector('.sticky-top')?.getBoundingClientRect();
-    const height = toast.offsetHeight;
-    const low = Math.min(bottom-height-8, Math.max(top+8, (header?.bottom || top)+8));
-    const candidates = [bottom-height-16, low];
-    const y = candidates.find(y => !field || y+height+8 <= field.top || y >= field.bottom+8) ?? low;
-    toast.style.bottom = 'auto';
-    toast.style.top = Math.max(top+8, y) + 'px';
+    const anchor = source?.closest('.dash-row, .dash-fee, .input-table tr, .pg-row') || source?.parentElement;
+    if (!anchor?.parentElement) return;
+    // Keep the source group in place; following content gets actual layout space.
+    if (!pageSpace || pageSpace.previousElementSibling !== anchor) {
+      releasePageSpace();
+      const tableRow = anchor.tagName === 'TR';
+      pageSpace = document.createElement(tableRow ? 'tr' : 'div');
+      pageSpace.className = 'neg-notice-space';
+      let holder = pageSpace;
+      if (tableRow) {
+        holder = document.createElement('td'); holder.colSpan = 2;
+        pageSpace.appendChild(holder);
+      }
+      toast.classList.add('neg-toast-inline');
+      toast.style.removeProperty('top'); toast.style.removeProperty('bottom');
+      holder.appendChild(toast);
+      anchor.after(pageSpace);
+    }
   }
   function schedulePosition(){
     if (message && positionFrame === null) positionFrame = requestAnimationFrame(positionPageNotice);
@@ -4899,6 +4963,7 @@ const negativeNoticeUI = (() => {
       if (active) { el.dataset.sourceField = message.field; el.dataset.sourceMode = message.mode; }
     });
     if (!inKeyboard) positionPageNotice();
+    else releasePageSpace();
   }
   function show(el){
     const label = (el.closest('.dash-cell')?.querySelector('.dash-label')?.textContent || el.closest('.input-table tr')?.querySelector('td')?.textContent || '').replace(/\s+/g, '').trim();
@@ -4916,7 +4981,7 @@ const negativeNoticeUI = (() => {
   window.addEventListener('scroll', schedulePosition, {passive:true});
   window.addEventListener('resize', schedulePosition, {passive:true});
   window.visualViewport?.addEventListener('resize', schedulePosition, {passive:true});
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') clear(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { pagePointers.clear(); clear(); releaseHeldPageSpaces(); } });
   return {show, clear, closed, revision: () => revision};
 })();
 function showNegativeInputWarning(el) {
@@ -6954,6 +7019,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   let _kbTouchMoved = false;
   function resetKbGestureState(){
+    _kbClearResidualClick();
     kb._ignoreClick = false;
     _kbTouchMoved = false;
     if (typeof _kbClearPtr === 'function') _kbClearPtr();
@@ -7148,17 +7214,31 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       clearPressed(); // 滑動中絕不顯示按鍵壓下
     }
   });
+  let _kbResidualClickCleanup = null;
+  function _kbClearResidualClick(){
+    if (_kbResidualClickCleanup) _kbResidualClickCleanup();
+  }
   function _eatOneDocumentClick(ms){
-    // 只吃「點在鍵盤上」的殘留 click;點輸入欄要放行(否則收起後快速點欄會沒反應)
-    const eat = (ev) => {
+    // 保護只屬於剛結束的滑動；新的 pointerdown／開欄不能沿用舊 click 攔截。
+    _kbClearResidualClick();
+    let timer = null;
+    const cleanup = () => {
       document.removeEventListener('click', eat, true);
+      document.removeEventListener('pointerdown', cleanup, true);
+      clearTimeout(timer);
+      if (_kbResidualClickCleanup === cleanup) _kbResidualClickCleanup = null;
+    };
+    const eat = (ev) => {
+      cleanup();
       if (kb.contains(ev.target)) {
         ev.preventDefault();
         ev.stopPropagation();
       }
     };
+    _kbResidualClickCleanup = cleanup;
     document.addEventListener('click', eat, true);
-    setTimeout(() => document.removeEventListener('click', eat, true), ms || 450);
+    document.addEventListener('pointerdown', cleanup, {capture:true, passive:true});
+    timer = setTimeout(cleanup, ms || 450);
   }
   function _kbFinishPtr(e, cancelled){
     if (!_kbPtr || e.pointerId !== _kbPtr.id) return;
