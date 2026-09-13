@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.12D-inset-69e6636e">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.12D-inset-69e6636e">
+<link rel="manifest" href="manifest.json?v=2026.09.13A-input-focus">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.13A-input-focus">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.12D-inset-69e6636e">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.13A-input-focus">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -254,6 +254,8 @@
     display: flex;
     transform: translateY(0);
   }
+  /* 編輯或選單開啟期間暫避安裝教學；不更改 show 或使用者安裝偏好。 */
+  .install-banner[inert] { visibility: hidden; }
   .install-banner-icon {
     flex-shrink: 0;
     width: 36px; height: 36px;
@@ -842,6 +844,13 @@
   /* 點 d_rate 顯示卡片時,要可以接觸事件 */
   .dash-display#d_rate, .dash-display#p_rate { cursor: pointer; position: relative; padding: 0 11px !important; }
 
+  /* 鍵盤導覽的焦點不開啟新草稿，也不改原本的欄位配色。 */
+  .ui-key-control:focus-visible,
+  .ck-bind:focus-visible:not(.ck-active) {
+    outline: 2px solid #B77B22;
+    outline-offset: 3px;
+  }
+
   /* === 自訂級距選單(取代系統 select)=== */
   .rate-sheet-mask {
     position: fixed;
@@ -884,6 +893,17 @@
   .rate-sheet-handle {
     display: none;
   }
+  .rate-sheet-actions { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+  .rate-sheet-close {
+    min-width: 64px; min-height: 36px; padding: 6px 14px;
+    border: 1.5px solid #807F78; border-radius: 8px;
+    background: #FFFFFF; color: #1F2F2A; font: inherit; cursor: pointer;
+  }
+  #rateOptions:focus-visible, .rate-sheet-close:focus-visible {
+    outline: 3px solid #0F6E56; outline-offset: 3px; border-radius: 8px;
+  }
+  body.is-preview #rateOptions:focus-visible,
+  body.is-preview .rate-sheet-close:focus-visible { outline-color: #2C5586; }
   .rate-sheet-title {
     font-size: 14px;
     color: #1F2F2A;
@@ -1118,6 +1138,72 @@
   }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+
+  /* 窄畫面成本列：名稱與金額分列，保留金額與鎖鈕的完整寬度。 */
+  @media (max-width: 420px) {
+    :is(#tabPanels, #pTabPanels) .input-table,
+    :is(#tabPanels, #pTabPanels) .input-table > tbody {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      margin-bottom: 8px;
+      min-width: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:first-child {
+      height: auto !important;
+      min-height: 32px;
+      padding: 6px 8px !important;
+      border-radius: 6px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:first-child span {
+      white-space: normal !important;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:last-child {
+      padding: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    :is(#tabPanels, #pTabPanels) .lockable-wrap {
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .lockable-wrap input {
+      flex: 1 1 0%;
+      width: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .sum-display {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 32px;
+      height: auto !important;
+      padding: 6px 8px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
 
   /* 表格式輸入(對應 Excel 截圖風格) */
   .input-table {
@@ -2379,6 +2465,30 @@
     width: 38px; height: 4px; border-radius: 2px;
     background: #C8C7C0; margin: 2px auto 8px;
   }
+  /* 固定訊息列：顯示／清除提示不改變按鍵座標。 */
+  .calc-kb-notice {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    margin: 0 0 6px;
+    padding: 0 4px;
+    color: #B02E2E;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
+    visibility: hidden;
+    pointer-events: none;
+    user-select: none;
+  }
+  .calc-kb-notice.show { visibility: visible; }
+
   /* 數字鍵盤作用中的欄位:模擬瀏覽器原生 :focus 樣式(因為我們把欄位 blur 掉,
      原生 focus 觸發不到 → 用 ck-active class 手動套上一樣的 background + box-shadow) */
   /* 計算機編輯中的欄位:明顯高亮,方便 Tab 切換時辨識 */
@@ -3267,7 +3377,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.12D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.13A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3276,8 +3386,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
 <!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
 <div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
-<div class="calc-kb" id="calcKb">
+<div class="calc-kb" id="calcKb" inert>
   <div class="calc-kb-grip"></div>
+  <div class="calc-kb-notice" id="calcKbNotice" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="calc-kb-keys" id="calcKbKeys">
     <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
     <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
@@ -3304,10 +3415,11 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
 <!-- ===== 自訂級距選單 ===== -->
 <div class="rate-sheet-mask" id="rateSheetMask"></div>
-<div class="rate-sheet" id="rateSheet" role="dialog" aria-label="選擇稅率級距">
+<div class="rate-sheet" id="rateSheet" role="dialog" aria-modal="true" aria-labelledby="rateSheetTitle" aria-hidden="true" inert>
   <div class="rate-sheet-handle"></div>
-  <div class="rate-sheet-title">選擇適用稅率級距</div>
-  <div id="rateOptions">
+  <div class="rate-sheet-actions"><button class="rate-sheet-close" id="rateSheetCloseBtn" type="button">關閉</button></div>
+  <div class="rate-sheet-title" id="rateSheetTitle">選擇適用稅率級距</div>
+  <div id="rateOptions" role="listbox" tabindex="0" aria-labelledby="rateSheetTitle">
     <div class="rate-sheet-option" data-value="0.45">
       <div>
         <div class="rate-num">45%</div>
@@ -4455,6 +4567,59 @@ function renderPartyTables(d) {
   refreshPartyWanDisplays();
 }
 
+// 焦點資格只跟介面的實際開關狀態同步，不寫入案件或偏好資料。
+(function setupInteractiveRegions(){
+  const displayOnlyIds = ['ap_s_escrow_display','ap_c_purchase_display',
+    'pp_s_swap_display','pp_s_escrow_display','pp_c_purchase_display','ap_o_selfuse'];
+  function setInert(el, value){ if (el && el.inert !== value) el.inert = value; }
+  window.__syncInteractiveRegions = function(){
+    for (const id of ['tabPanels','pTabPanels']) {
+      const panel = document.getElementById(id);
+      if (panel) setInert(panel, panel.classList.contains('hidden'));
+    }
+    document.querySelectorAll('.tab-content, .party-content').forEach(el => {
+      setInert(el, !el.classList.contains('active'));
+    });
+    document.querySelectorAll('.collapse-section').forEach(section => {
+      const open = section.classList.contains('open');
+      const body = section.querySelector('.collapse-section-body');
+      const trigger = section.querySelector('.collapse-section-header');
+      setInert(body, !open);
+      if (trigger) trigger.setAttribute('aria-expanded', String(open));
+    });
+    for (const [panelId, triggerId] of [['tabPanels','collapseBtn'],['pTabPanels','pCollapseBtn']]) {
+      const panel = document.getElementById(panelId), trigger = document.getElementById(triggerId);
+      if (panel && trigger) trigger.setAttribute('aria-expanded', String(!panel.classList.contains('hidden')));
+    }
+    displayOnlyIds.forEach(id => { const el = document.getElementById(id); if (el) el.tabIndex = -1; });
+    document.querySelectorAll('input.ck-bind, input.is-locked').forEach(el => {
+      const index = el.disabled || el.classList.contains('is-locked') || displayOnlyIds.includes(el.id) ? -1 : 0;
+      if (el.tabIndex !== index) el.tabIndex = index;
+    });
+  };
+  document.querySelectorAll('#rateOpenBtn, #pRateOpenBtn, .collapse-section-header').forEach(el => {
+    el.classList.add('ui-key-control');
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    if (el.matches('.dash-rate-wrap')) el.setAttribute('aria-haspopup', 'dialog');
+    else {
+      const body = document.getElementById(el.dataset.target)?.querySelector('.collapse-section-body');
+      if (body) { body.id = el.dataset.target + 'Panel'; el.setAttribute('aria-controls', body.id); }
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (document.getElementById('calcKb')?.classList.contains('show') ||
+        document.getElementById('rateSheet')?.classList.contains('show')) return;
+    const el = event.target;
+    if (!el?.matches?.('.ui-key-control') || el.closest('[inert]')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!event.repeat) el.click();
+  }, true);
+  window.__syncInteractiveRegions();
+})();
+
 // === 鎖定欄位:點鎖頭切換可改/鎖定 ===
 const LOCK_SVG = {
   // 可開關鎖 — 鎖定中(成屋:綠)
@@ -4521,6 +4686,7 @@ document.querySelectorAll('.lock-btn').forEach(btn => {
       target.blur();
     }
     saveLockState();
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -4560,6 +4726,7 @@ function loadLockState() {
   });
 }
 loadLockState();
+window.__syncInteractiveRegions();
 
 // === 自訂預設值持久化 ===
 // 使用者解鎖鎖定欄位、輸入新值、再鎖回去 → 該值成為新預設值(data-default)
@@ -4607,6 +4774,7 @@ document.querySelectorAll('.collapse-section-header').forEach(h => {
     const sec = document.getElementById(id);
     if (sec) {
       sec.classList.toggle('open');
+      window.__syncInteractiveRegions();
       // 公式流程展開時:DOM 寬度才能量到,需要重跑自適應
       if (id === 'flowSection' && sec.classList.contains('open')) {
         requestAnimationFrame(() => {
@@ -4623,6 +4791,7 @@ document.querySelectorAll('.party-tab').forEach(tab => {
     const p = tab.dataset.party;
     document.querySelectorAll('.party-tab').forEach(t => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.party-content').forEach(c => c.classList.toggle('active', c.id === 'party-' + p));
+    window.__syncInteractiveRegions();
     refreshPartyWanDisplays();
   });
 });
@@ -4677,21 +4846,84 @@ document.addEventListener('input', (e) => {
   }
 });
 // === 禁止輸入負數(屋主目標稅後利潤 d_target / p_target 除外)===
+// 提示只保存暫時 UI 狀態，不參與欄位提交或保存資料。
+const negativeNoticeUI = (() => {
+  let revision = 0, message = null, timer = null, positionFrame = null;
+  const mode = () => document.body.classList.contains('is-preview') ? 'preview' : 'ready';
+  const strip = () => document.getElementById('calcKbNotice');
+  function clear(){
+    clearTimeout(timer); timer = null; message = null;
+    if (positionFrame !== null) cancelAnimationFrame(positionFrame);
+    positionFrame = null;
+    [strip(), document.getElementById('negToast')].forEach(el => {
+      if (!el) return;
+      el.classList.remove('show'); el.textContent = '';
+      delete el.dataset.sourceField; delete el.dataset.sourceMode;
+    });
+  }
+  function positionPageNotice(){
+    positionFrame = null;
+    const toast = document.getElementById('negToast');
+    if (!message || !toast?.classList.contains('show')) return;
+    const viewport = window.visualViewport;
+    const top = viewport?.offsetTop || 0;
+    const bottom = top + (viewport?.height || innerHeight);
+    const source = document.getElementById(message.field);
+    const row = source?.closest('.dash-cell, .input-table tr, .loan-input-row') || source;
+    const field = row?.getBoundingClientRect();
+    const header = document.querySelector('.sticky-top')?.getBoundingClientRect();
+    const height = toast.offsetHeight;
+    const low = Math.min(bottom-height-8, Math.max(top+8, (header?.bottom || top)+8));
+    const candidates = [bottom-height-16, low];
+    const y = candidates.find(y => !field || y+height+8 <= field.top || y >= field.bottom+8) ?? low;
+    toast.style.bottom = 'auto';
+    toast.style.top = Math.max(top+8, y) + 'px';
+  }
+  function schedulePosition(){
+    if (message && positionFrame === null) positionFrame = requestAnimationFrame(positionPageNotice);
+  }
+  function render(){
+    if (!message || message.mode !== mode() || performance.now() >= message.until || document.getElementById('rateSheet')?.classList.contains('show')) { clear(); return; }
+    const inKeyboard = document.getElementById('calcKb')?.classList.contains('show');
+    let toast = document.getElementById('negToast');
+    if (!inKeyboard && !toast) {
+      toast = document.createElement('div'); toast.id = 'negToast'; toast.className = 'neg-toast';
+      toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
+      toast.style.maxWidth = 'calc(100vw - 24px)'; toast.style.boxSizing = 'border-box';
+      document.body.appendChild(toast);
+    }
+    [strip(), toast].forEach(el => {
+      if (!el) return;
+      const active = inKeyboard ? el === strip() : el === toast;
+      el.classList.toggle('show', active); el.textContent = active ? message.text : '';
+      if (active) { el.dataset.sourceField = message.field; el.dataset.sourceMode = message.mode; }
+    });
+    if (!inKeyboard) positionPageNotice();
+  }
+  function show(el){
+    const label = (el.closest('.dash-cell')?.querySelector('.dash-label')?.textContent || el.closest('.input-table tr')?.querySelector('td')?.textContent || '').replace(/\s+/g, '').trim();
+    const shortLabel = label.length > 8 ? label.slice(0, 8) + '…' : label;
+    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now()+1400, text: (shortLabel ? shortLabel+'：' : '')+'不可輸入負數'};
+    const serial = message.serial;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, 1400);
+    render();
+  }
+  function closed(previous, allowCurrent){
+    if (allowCurrent && message && message.serial > previous) render();
+    else clear();
+  }
+  window.addEventListener('scroll', schedulePosition, {passive:true});
+  window.addEventListener('resize', schedulePosition, {passive:true});
+  window.visualViewport?.addEventListener('resize', schedulePosition, {passive:true});
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') clear(); });
+  return {show, clear, closed, revision: () => revision};
+})();
 function showNegativeInputWarning(el) {
   el.classList.add('neg-blocked');
   clearTimeout(el.__negTimer);
   el.__negTimer = setTimeout(() => el.classList.remove('neg-blocked'), 1200);
-  let toast = document.getElementById('negToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'negToast';
-    toast.className = 'neg-toast';
-    toast.textContent = '不可輸入負數';
-    document.body.appendChild(toast);
-  }
-  toast.classList.add('show');
-  clearTimeout(window.__negToastTimer);
-  window.__negToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  negativeNoticeUI.show(el);
 }
 // 非計算機來源的保險防護；計算機在提交前已先檢查最終數字。
 document.addEventListener('input', function(e) {
@@ -4844,6 +5076,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       panels.classList.remove('hidden');
       cb.classList.remove('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -4883,6 +5116,29 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   const sheet = $('rateSheet');
   const mask = $('rateSheetMask');
   const opts = document.querySelectorAll('.rate-sheet-option');
+  const listbox = $('rateOptions');
+  const closeBtn = $('rateSheetCloseBtn');
+  const appShell = $('appShell');
+  const installBanner = $('installBanner');
+  let bannerWasInert = false;
+  let returnFocus = null, shellWasInert = false;
+  let pendingClose = null, openGeneration = 0;
+
+  opts.forEach((o, index) => {
+    o.id = 'rateOption' + index;
+    o.setAttribute('role', 'option');
+    o.setAttribute('aria-selected', 'false');
+  });
+
+  function cancelPendingClose() {
+    ++openGeneration;
+    if (pendingClose !== null) clearTimeout(pendingClose);
+    pendingClose = null;
+  }
+  function focusWithoutScroll(element) {
+    if (!element || !element.isConnected || element.closest('[inert]')) return;
+    element.focus({ preventScroll: true });
+  }
 
   // 當前要操作的 select(成屋 d_rate_select / 預售 p_rate_select)
   function activeSelect() {
@@ -4899,21 +5155,57 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const select = activeSelect();
     if (!select) return;
     const preview = isPreview();
+    let selected = null;
     opts.forEach(o => {
       // 預售模式:隱藏 10% 那一項
       const is10 = o.dataset.value === '0.10';
       o.style.display = (preview && is10) ? 'none' : '';
-      o.classList.toggle('selected', o.dataset.value === select.value);
+      const matches = o.dataset.value === select.value;
+      o.classList.toggle('selected', matches);
+      o.setAttribute('aria-selected', String(matches));
+      if (matches && o.style.display !== 'none') selected = o;
     });
+    if (selected) listbox.setAttribute('aria-activedescendant', selected.id);
+    else listbox.removeAttribute('aria-activedescendant');
   }
-  function open() {
+  function open(origin) {
+    // The existing document click-capture guard validates drafts before this.
+    cancelPendingClose();
+    const wasOpen = sheet.classList.contains('show');
+    if (!wasOpen) {
+      returnFocus = origin || (isPreview() ? $('pRateOpenBtn') : $('rateOpenBtn'));
+      shellWasInert = appShell ? appShell.inert : false;
+      bannerWasInert = installBanner ? installBanner.inert : false;
+    }
     syncSelected();
+    sheet.inert = false;
+    sheet.setAttribute('aria-hidden', 'false');
     mask.classList.add('show');
     sheet.classList.add('show');
+    focusWithoutScroll(listbox);
+    if (appShell) appShell.inert = true;
+    if (installBanner) installBanner.inert = true;
   }
   function close() {
+    cancelPendingClose();
+    if (!sheet.classList.contains('show')) return;
     mask.classList.remove('show');
     sheet.classList.remove('show');
+    sheet.inert = true;
+    if (appShell) appShell.inert = shellWasInert;
+    if (installBanner) installBanner.inert = bannerWasInert;
+    const origin = returnFocus;
+    returnFocus = null;
+    focusWithoutScroll(origin);
+    sheet.setAttribute('aria-hidden', 'true');
+  }
+  function scheduleClose() {
+    cancelPendingClose();
+    const generation = openGeneration;
+    pendingClose = setTimeout(() => {
+      pendingClose = null;
+      if (generation === openGeneration) close();
+    }, 120);
   }
 
   // 點成屋的「級距」格 → 開
@@ -4921,17 +5213,18 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   if (dRateBtn) {
     dRateBtn.addEventListener('click', (e) => {
       if (e.target === $('d_rate_select')) return;
-      open();
+      open(dRateBtn);
     });
   }
   // 點預售的「級距」格 → 開(共用同一個彈窗)
   const pRateBtn = $('pRateOpenBtn');
   if (pRateBtn) {
-    pRateBtn.addEventListener('click', () => open());
+    pRateBtn.addEventListener('click', () => open(pRateBtn));
   }
 
-  // 點遮罩關
+  // 點遮罩或可见的關閉按鈕關；上下鍵已套用的選擇不撤銷。
   mask.addEventListener('click', close);
+  closeBtn.addEventListener('click', close);
 
   // 寫回「當前版本」的 select,並觸發對應的重算
   function applyOption(o) {
@@ -4968,33 +5261,35 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   // 點選項 → 套用並關閉
   opts.forEach(o => {
     o.addEventListener('click', () => {
-      if (applyOption(o)) setTimeout(close, 120);
+      if (applyOption(o)) scheduleClose();
     });
   });
 
-  // ESC 關;↑↓ 移動選擇;Enter / 空白鍵確認關閉
+  // Only the listbox and close button are Tab stops while the sheet is open.
+  // Capture also prevents the closing key from activating the restored entry.
   document.addEventListener('keydown', (e) => {
     if (!sheet.classList.contains('show')) return;
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      close();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!['Tab', 'Escape', 'ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) return;
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement !== listbox) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.key === 'Tab') {
+      const stops = [closeBtn, listbox];
+      const index = stops.indexOf(document.activeElement);
+      const next = index < 0 ? (e.shiftKey ? stops.length - 1 : 0)
+        : (index + (e.shiftKey ? -1 : 1) + stops.length) % stops.length;
+      focusWithoutScroll(stops[next]);
       return;
     }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      moveSelection(1);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      cancelPendingClose();
+      moveSelection(e.key === 'ArrowDown' ? 1 : -1);
       return;
     }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      moveSelection(-1);
-      return;
-    }
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      close();
-    }
-  });
+    // Escape only closes. Enter/Space keeps the current selection and closes.
+    close();
+  }, true);
 
   // 初始同步一次
   syncSelected();
@@ -5685,6 +5980,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 清空/恢復按鈕外觀跟著版本走(兩版各自獨立的清空狀態)
     if (typeof syncClearBtnForVer === 'function') syncClearBtnForVer();
     writeStoredText(KEY, ver);
+    window.__syncInteractiveRegions();
   }
   // 三區塊(成本明細 / 公式流程 / 三方明細)一鍵全展開或全收合
   function toggleAllSections(ver) {
@@ -5709,6 +6005,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       if (partySec) partySec.classList.add('open');
       if (flowSec) requestAnimationFrame(() => { if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers(); });
     }
+    window.__syncInteractiveRegions();
   }
   // 雙擊「當前已在的版本鈕」→ 全展開/全收合;單擊已在的版本 → 回頂;單擊另一版 → 切版
   let _verLastClk = 0, _verLastBtn = null, _verWasActive = false;
@@ -5761,6 +6058,7 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
       panels.classList.remove('hidden');
       if (cb) cb.classList.remove('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -5813,6 +6111,7 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
       panels.classList.add('hidden');
       cb.classList.add('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 })();
 
@@ -5836,6 +6135,7 @@ $('collapseBtn').addEventListener('click', () => {
     panels.classList.add('hidden');
     btn.classList.add('collapsed');
   }
+  window.__syncInteractiveRegions();
 });
 
 // 清空 / 恢復切換按鈕(成屋、預售各自獨立)
@@ -6234,6 +6534,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const kb       = document.getElementById('calcKb');
   const backdrop = document.getElementById('calcKbBackdrop');
   if (!kb || !backdrop) return;
+  const keyboardInstallBanner = document.getElementById('installBanner');
+  let keyboardBannerWasInert = false;
 
   // 計算機綁定的欄位
 
@@ -6243,6 +6545,37 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   let draftSnapshot = null;
   let draftCommitted = false;
+  let nativeTabIntent = null, nativeTabReset = null;
+  let suppressFieldFocus = 0;
+  function clearNativeTabIntent(){
+    nativeTabIntent = null;
+    clearTimeout(nativeTabReset);
+    nativeTabReset = null;
+  }
+  function restoreKbFieldFocus(id){
+    clearNativeTabIntent();
+    const input = id && document.getElementById(id);
+    if (!input || !canOpenKb(input) || document.visibilityState === 'hidden') return;
+    if (input.dataset.ckBound !== '1') bindFieldForKb(input);
+    suppressFieldFocus++;
+    try { input.focus({preventScroll:true}); } finally { suppressFieldFocus--; }
+  }
+  document.addEventListener('keydown', event => {
+    clearNativeTabIntent();
+    if (event.key !== 'Tab' || event.defaultPrevented || kb.classList.contains('show') ||
+        document.getElementById('rateSheet')?.classList.contains('show')) return;
+    window.__syncInteractiveRegions();
+    nativeTabIntent = event;
+    // Only this browser Tab default action may open a field; later programmatic focus may not.
+    nativeTabReset = setTimeout(clearNativeTabIntent, 0);
+  }, true);
+  document.addEventListener('focus', event => {
+    if (!event.target?.matches?.('input.ck-bind')) clearNativeTabIntent();
+  }, true);
+  document.addEventListener('keyup', event => { if (event.key === 'Tab') clearNativeTabIntent(); }, true);
+  document.addEventListener('pointerdown', clearNativeTabIntent, true);
+  window.addEventListener('blur', clearNativeTabIntent);
+  document.addEventListener('visibilitychange', clearNativeTabIntent);
   let pendingUnlockOpen = null;
   let unlockIntent = 0;
   function cancelPendingUnlockOpen(){
@@ -6360,10 +6693,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const rect = box.getBoundingClientRect();
     const label = input.closest('.dash-cell')?.querySelector('.dash-label');
     const row = input.closest('.loan-input-row');
+    const costRow = input.closest('#tabPanels .input-table tr, #pTabPanels .input-table tr');
     const labelRect = label?.getBoundingClientRect();
     const rowRect = row?.getBoundingClientRect();
-    const top = Math.min(rect.top, labelRect?.top ?? rect.top);
-    const bottom = Math.max(rect.bottom, rowRect?.bottom ?? rect.bottom);
+    const costRect = costRow?.getBoundingClientRect();
+    const top = Math.min(rect.top, labelRect?.top ?? rect.top, costRect?.top ?? rect.top);
+    const bottom = Math.max(rect.bottom, rowRect?.bottom ?? rect.bottom, costRect?.bottom ?? rect.bottom);
     return {top, bottom, height:bottom-top};
   }
   function stopFieldVisibility(){
@@ -6465,7 +6800,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const hiddenOffset = height * 1.1; // 與 CSS translateY(110%) 相同。
     const startPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
     const viewportWidth = window.innerWidth, viewportHeight = window.innerHeight;
+    kb.inert = true;
     kb.classList.remove('show');
+    if (keyboardInstallBanner) keyboardInstallBanner.inert = keyboardBannerWasInert;
     if (!startPadding || hiddenOffset - startOffset < 0.5 ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.body.style.paddingBottom = '';
@@ -6504,6 +6841,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
+    if (!kb.classList.contains('show')) negativeNoticeUI.clear();
+    clearNativeTabIntent();
     cancelPendingUnlockOpen();
     cancelKbCloseMotion();
     if (targetInput === input && kb.classList.contains('show')) return;
@@ -6539,6 +6878,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const pctWrap = input.closest('.pg-pct-input');
     if (pctWrap) pctWrap.classList.add('ck-active');
     backdrop.classList.add('show');
+    if (keyboardInstallBanner && !kb.classList.contains('show')) {
+      keyboardBannerWasInert = keyboardInstallBanner.inert;
+      keyboardInstallBanner.inert = true;
+    }
+    kb.inert = false;
     kb.classList.add('show');
     // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
@@ -6615,7 +6959,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (typeof _kbClearPtr === 'function') _kbClearPtr();
   }
 
-  function closeKb(){
+  function closeKb({restoreFocus=false}={}){
+    const noticeRevision = negativeNoticeUI.revision();
+    clearNativeTabIntent();
+    const focusId = targetInput?.id;
     cancelPendingUnlockOpen();
     if (commitToField() === false) return false;
     clearCkActive();
@@ -6627,10 +6974,15 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
     resetKbGestureState();
+    negativeNoticeUI.closed(noticeRevision, true);
+    if (restoreFocus) restoreKbFieldFocus(focusId);
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
-  function cancelKb(){
+  function cancelKb({restoreFocus=false}={}){
+    negativeNoticeUI.clear();
+    clearNativeTabIntent();
+    const focusId = targetInput?.id;
     cancelPendingUnlockOpen();
     if (!kb.classList.contains('show')) return;
     clearInputError();
@@ -6653,6 +7005,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     touched = false;
     resetKbGestureState();
+    if (restoreFocus) restoreKbFieldFocus(focusId);
   }
 
   window.__cancelCalcKbDraft = function(){
@@ -6669,19 +7022,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn';
   document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest(CALC_NAV_SELECTOR)) return;
+    negativeNoticeUI.clear();
     if (!kb.classList.contains('show') && pendingUnlockOpen === null) return;
     if (window.__commitCalcKbDraft() === false) {
       event.preventDefault();
       event.stopImmediatePropagation();
+    } else {
+      negativeNoticeUI.clear();
     }
   }, true);
 
   // 按鍵處理
   function pressKey(k){
+    if (!kb.classList.contains('show')) return;
     if (k === '' || k == null) return;
     cancelPendingUnlockOpen();
     if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換(不算編輯內容)
-    if (k === 'done'){ closeKb(); return; }      // 完成(不算編輯內容)
+    if (k === 'done'){ closeKb({restoreFocus:true}); return; }      // 完成(不算編輯內容)
     clearInputError();
     if (targetInput && targetInput.id === 'pt_loan_rate') window.__clearLoanInputWarning();
     touched = true;   // 以下任一鍵都代表使用者實際編輯(含 C / 退格 清空)
@@ -6926,7 +7283,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     e.preventDefault();
     e.stopPropagation();
     if (mapped.action === 'cancel') {
-      cancelKb();
+      cancelKb({restoreFocus:true});
       return;
     }
     // 長按重複輸入(數字/退格)允許;首次才閃燈,避免狂閃
@@ -7028,7 +7385,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   // 判斷某欄位是否能開鍵盤
   function canOpenKb(el){
-    if (!el) return false;
+    if (!el || el.disabled || el.closest('[inert]')) return false;
     if (DISPLAY_ONLY.has(el.id)) return false;     // 純顯示欄位
     if (el.classList.contains('is-locked')) return false;  // 鎖定中
     if (!isFieldVisibleForKb(el)) return false;
@@ -7077,13 +7434,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       el.setAttribute('readonly', '');
     }
     el.style.cursor = 'pointer';
-    // 軟體鍵盤開啟時,不要被原生 focus/Tab 搶焦點(改由 switchKbField 處理)
+    // A native Tab may enter editing synchronously. Restoring focus never starts a draft.
     el.addEventListener('focus', e => {
-      if (kb.classList.contains('show')) {
-        e.target.blur();
-        return;
-      }
+      const fromTab = nativeTabIntent && !nativeTabIntent.defaultPrevented;
+      clearNativeTabIntent();
+      if (suppressFieldFocus) return;
       e.target.blur();
+      if (fromTab && !kb.classList.contains('show') && canOpenKb(el)) tryOpenField();
     });
     // 用 pointerup 開鍵盤:收起後若殘留 click 被吃掉,快速點欄位仍有反應
     let fieldPtr = null;
@@ -7136,6 +7493,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const el = document.getElementById(id);
       if (el && el.dataset.ckBound !== '1') bindFieldForKb(el);
     });
+    window.__syncInteractiveRegions();
   }
   scanDynamicFields();  // 初始掃一次
   // 監聽 body 整體 DOM 變化(仲介卡 innerHTML 重寫會觸發)
@@ -7295,6 +7653,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   });
   document.querySelectorAll('.tab-btn[data-tab], .tab-btn[data-ptab]').forEach(function(b){ b.classList.remove('active'); });
   ['flowSection','partySection'].forEach(function(id){ var s=document.getElementById(id); if(s) s.classList.remove('open'); });
+  window.__syncInteractiveRegions();
 })();
 
 
