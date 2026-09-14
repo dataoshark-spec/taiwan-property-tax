@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.14C-completed-focus">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.14C-completed-focus">
+<link rel="manifest" href="manifest.json?v=2026.09.14D-idle-colors">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.14D-idle-colors">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.14C-completed-focus">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.14D-idle-colors">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -423,7 +423,8 @@
   /* 必填/選填底色 */
   .presale-dash .dash-input.req { background: #FFFEF8 !important; }    /* 沿用米黃 */
   .presale-dash .dash-input.req:focus { background: #F0F6FC !important; }
-  .presale-dash .dash-input.opt { background: #E8EEF4 !important; }    /* 對應成屋 opt 淡綠 → 淡藍 */
+  .presale-dash .dash-input.opt,
+  .presale-dash .dash-input.ck-bind.opt:not(.bg-light):focus:not(.ck-active) { background: #E8EEF4 !important; }    /* 未編輯時也保留預售的淺藍底 */
 
   /* 禁止負數:輸入負號時輸入欄閃紅框+輕微抖動 */
   input.neg-blocked {
@@ -479,7 +480,7 @@
   }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
-  .presale-dash #p_target:focus { background: #F0F6FC !important; }
+  .presale-dash #p_target:focus:not(.ck-completed-focus) { background: #F0F6FC !important; }
   /* 屋主利潤輸出格:深藍底 + 米金字(對應成屋深綠 + 米金)*/
   .presale-dash .dash-display.profit {
     background: #1A3A5C !important;
@@ -593,12 +594,12 @@
     border-color: #1A3A5C;
     color: #1A3A5C;
   }
-  body.is-preview .pg-pct-input:focus-within { background: #1A3A5C; }
+  body.is-preview .pg-pct-input:focus-within:not(:has(> .ck-completed-focus)) { background: #1A3A5C; }
   body.is-preview .pg-value {
     border-color: #1A3A5C;
     color: #1A3A5C;
   }
-  body.is-preview .pg-value .pt-input:focus { background: #1A3A5C; }
+  body.is-preview .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1A3A5C; }
 
   /* 「加 / 扣 / 收回」三色標記 — 對應成屋的綠/紅/淡綠 */
   body.is-preview .pg-op-add {
@@ -771,7 +772,7 @@
   .dash-input.ck-bind.bg-light:focus:not(.ck-active) {
     background: #FFFEF8 !important;
   }
-  .dash-input.ck-bind.opt:focus:not(.ck-active),
+  .dash-input.ck-bind.opt:not(.bg-light):focus:not(.ck-active),
   .dash-input.ck-bind.bg-deep:focus:not(.ck-active) {
     background: #F0EFE8 !important;
   }
@@ -2136,7 +2137,7 @@
     transition: background 0.15s, color 0.15s;
   }
   .pg-pct-input:hover { background: #F2F1EB; }
-  .pg-pct-input:focus-within { background: #1F2F2A; color: #fff; }
+  .pg-pct-input:focus-within:not(:has(> .ck-completed-focus)) { background: #1F2F2A; color: #fff; }
   .pg-pct-input .pt-input-pct {
     width: 28px;
     border: none;
@@ -2275,7 +2276,7 @@
     -webkit-appearance: none; margin: 0;
   }
   .pg-value .pt-input:hover { background: #F2F1EB; }
-  .pg-value .pt-input:focus { background: #1F2F2A; color: #fff; }
+  .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1F2F2A; color: #fff; }
 
   /* 仲介其它：閒置時顯示四位，原始 input 值與草稿保持不變。 */
   .pt-wan-wrap { position: relative; display: inline-block; width: 88px; height: 22px; vertical-align: middle; }
@@ -3396,7 +3397,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.14C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.14D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
