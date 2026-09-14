@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.14B-held-input">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.14B-held-input">
+<link rel="manifest" href="manifest.json?v=2026.09.14C-completed-focus">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.14C-completed-focus">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.14B-held-input">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.14C-completed-focus">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -865,7 +865,7 @@
 
   /* 鍵盤導覽的焦點不開啟新草稿，也不改原本的欄位配色。 */
   .ui-key-control:focus-visible,
-  .ck-bind:focus-visible:not(.ck-active) {
+  .ck-bind:focus-visible:not(.ck-active):not(.ck-completed-focus) {
     outline: 2px solid #B77B22;
     outline-offset: 3px;
   }
@@ -3396,7 +3396,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.14B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.14C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -6629,16 +6629,19 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     clearTimeout(nativeTabReset);
     nativeTabReset = null;
   }
-  function restoreKbFieldFocus(id){
+  function restoreKbFieldFocus(id, completed=false){
     clearNativeTabIntent();
     const input = id && document.getElementById(id);
     if (!input || !canOpenKb(input) || document.visibilityState === 'hidden') return;
     if (input.dataset.ckBound !== '1') bindFieldForKb(input);
+    // 完成後保留 Tab 的起點，但不再顯示正在鍵盤導覽的金色外框。
+    input.classList.toggle('ck-completed-focus', completed);
     suppressFieldFocus++;
     try { input.focus({preventScroll:true}); } finally { suppressFieldFocus--; }
   }
   document.addEventListener('keydown', event => {
     clearNativeTabIntent();
+    if (event.key === 'Tab') document.activeElement?.classList.remove('ck-completed-focus');
     if (event.key !== 'Tab' || event.defaultPrevented || kb.classList.contains('show') ||
         document.getElementById('rateSheet')?.classList.contains('show')) return;
     window.__syncInteractiveRegions();
@@ -6991,6 +6994,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
+    input.classList.remove('ck-completed-focus');
     if (!kb.classList.contains('show')) negativeNoticeUI.clear();
     clearNativeTabIntent();
     cancelPendingUnlockOpen();
@@ -7127,7 +7131,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
     resetKbGestureState();
     negativeNoticeUI.closed(noticeRevision, true);
-    if (restoreFocus) restoreKbFieldFocus(focusId);
+    if (restoreFocus) restoreKbFieldFocus(focusId, true);
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
@@ -7683,6 +7687,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       el.setAttribute('readonly', '');
     }
     el.style.cursor = 'pointer';
+    el.addEventListener('blur', () => el.classList.remove('ck-completed-focus'));
     // A native Tab may enter editing synchronously. Restoring focus never starts a draft.
     el.addEventListener('focus', e => {
       const fromTab = nativeTabIntent && !nativeTabIntent.defaultPrevented;
