@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.19D-silent-recovery">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.19D-silent-recovery">
+<link rel="manifest" href="manifest.json?v=2026.09.19E-input-touch">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.19E-input-touch">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.19D-silent-recovery">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.19E-input-touch">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -599,7 +599,7 @@
     border-color: #1A3A5C;
     color: #1A3A5C;
   }
-  body.is-preview .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1A3A5C; }
+  body.is-preview .pg-value .pt-input:focus:not(.ck-completed-focus):not(.ck-bind) { background: #1A3A5C; }
 
   /* 「加 / 扣 / 收回」三色標記 — 對應成屋的綠/紅/淡綠 */
   body.is-preview .pg-op-add {
@@ -2270,7 +2270,7 @@
     -webkit-appearance: none; margin: 0;
   }
   .pg-value .pt-input:hover { background: #F2F1EB; }
-  .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1F2F2A; color: #fff; }
+  .pg-value .pt-input:focus:not(.ck-completed-focus):not(.ck-bind) { background: #1F2F2A; color: #fff; }
 
   /* 仲介其它：閒置時顯示四位，原始 input 值與草稿保持不變。 */
   .pt-wan-wrap { position: relative; display: inline-block; width: 88px; height: 22px; vertical-align: middle; }
@@ -3391,7 +3391,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.19D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.19E</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -7781,6 +7781,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       if (moved) return;
       // 滑鼠仍交給 click,避免和系統行為重複
       if (e.pointerType === 'mouse') return;
+      // 同次觸控已在放開時開欄；定位或重繪後補送的 click 不得當成點外面。
+      if (e.pointerType === 'touch' && canOpenKb(el)) rememberTouchClick(e, el);
       tryOpenField();
     });
     el.addEventListener('click', () => { tryOpenField(); });
