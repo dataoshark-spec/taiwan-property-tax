@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.12D-inset-69e6636e">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.12D-inset-69e6636e">
+<link rel="manifest" href="manifest.json?v=2026.09.19D-silent-recovery">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.19D-silent-recovery">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.12D-inset-69e6636e">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.19D-silent-recovery">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -254,6 +254,8 @@
     display: flex;
     transform: translateY(0);
   }
+  /* 編輯或選單開啟期間暫避安裝教學；不更改 show 或使用者安裝偏好。 */
+  .install-banner[inert] { visibility: hidden; }
   .install-banner-icon {
     flex-shrink: 0;
     width: 36px; height: 36px;
@@ -421,7 +423,8 @@
   /* 必填/選填底色 */
   .presale-dash .dash-input.req { background: #FFFEF8 !important; }    /* 沿用米黃 */
   .presale-dash .dash-input.req:focus { background: #F0F6FC !important; }
-  .presale-dash .dash-input.opt { background: #E8EEF4 !important; }    /* 對應成屋 opt 淡綠 → 淡藍 */
+  .presale-dash .dash-input.opt,
+  .presale-dash .dash-input.ck-bind.opt:not(.bg-light):focus:not(.ck-active) { background: #E8EEF4 !important; }    /* 未編輯時也保留預售的淺藍底 */
 
   /* 禁止負數:輸入負號時輸入欄閃紅框+輕微抖動 */
   input.neg-blocked {
@@ -456,9 +459,28 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+  /* Page-only negative feedback reserves its own row after the source group. */
+  .neg-notice-space { box-sizing: border-box; margin: 8px 0; min-width: 0; }
+  .neg-toast.neg-toast-inline {
+    position: static; inset: auto; transform: none;
+    width: max-content; max-width: min(100%, 50vw) !important;
+    box-sizing: border-box; margin: 0 auto; text-align: center;
+  }
+  .input-table tr.neg-notice-space { display: table-row; margin: 0; }
+  .input-table tr.neg-notice-space > td {
+    display: table-cell; width: auto; padding: 8px 0;
+    border: 0; border-radius: 0; background: transparent;
+  }
+  @media (max-width: 420px) {
+    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space { display: block; margin: 0 0 8px; }
+    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space > td {
+      display: block; width: 100%; padding: 0;
+      border: 0; border-radius: 0; background: transparent;
+    }
+  }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
-  .presale-dash #p_target:focus { background: #F0F6FC !important; }
+  .presale-dash #p_target:focus:not(.ck-completed-focus) { background: #F0F6FC !important; }
   /* 屋主利潤輸出格:深藍底 + 米金字(對應成屋深綠 + 米金)*/
   .presale-dash .dash-display.profit {
     background: #1A3A5C !important;
@@ -572,12 +594,12 @@
     border-color: #1A3A5C;
     color: #1A3A5C;
   }
-  body.is-preview .pg-pct-input:focus-within { background: #1A3A5C; }
+  body.is-preview .pg-pct-input:focus-within:not(:has(> .ck-completed-focus)) { background: #1A3A5C; }
   body.is-preview .pg-value {
     border-color: #1A3A5C;
     color: #1A3A5C;
   }
-  body.is-preview .pg-value .pt-input:focus { background: #1A3A5C; }
+  body.is-preview .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1A3A5C; }
 
   /* 「加 / 扣 / 收回」三色標記 — 對應成屋的綠/紅/淡綠 */
   body.is-preview .pg-op-add {
@@ -750,7 +772,7 @@
   .dash-input.ck-bind.bg-light:focus:not(.ck-active) {
     background: #FFFEF8 !important;
   }
-  .dash-input.ck-bind.opt:focus:not(.ck-active),
+  .dash-input.ck-bind.opt:not(.bg-light):focus:not(.ck-active),
   .dash-input.ck-bind.bg-deep:focus:not(.ck-active) {
     background: #F0EFE8 !important;
   }
@@ -842,6 +864,13 @@
   /* 點 d_rate 顯示卡片時,要可以接觸事件 */
   .dash-display#d_rate, .dash-display#p_rate { cursor: pointer; position: relative; padding: 0 11px !important; }
 
+  /* 鍵盤導覽的焦點不開啟新草稿，也不改原本的欄位配色。 */
+  .ui-key-control:focus-visible,
+  .ck-bind:focus-visible:not(.ck-active):not(.ck-completed-focus) {
+    outline: 2px solid #B77B22;
+    outline-offset: 3px;
+  }
+
   /* === 自訂級距選單(取代系統 select)=== */
   .rate-sheet-mask {
     position: fixed;
@@ -884,6 +913,10 @@
   .rate-sheet-handle {
     display: none;
   }
+  #rateOptions:focus-visible {
+    outline: 3px solid #0F6E56; outline-offset: 3px; border-radius: 8px;
+  }
+  body.is-preview #rateOptions:focus-visible { outline-color: #2C5586; }
   .rate-sheet-title {
     font-size: 14px;
     color: #1F2F2A;
@@ -1118,6 +1151,73 @@
   }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
+
+  /* 窄畫面成本列：名稱在左、金額在右；長說明換行，鎖鈕保留原尺寸。 */
+  @media (max-width: 420px) {
+    :is(#tabPanels, #pTabPanels) .input-table,
+    :is(#tabPanels, #pTabPanels) .input-table > tbody {
+      display: block;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      min-width: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:first-child {
+      height: auto !important;
+      min-height: 44px;
+      padding: 6px 8px !important;
+      border-radius: 6px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:first-child span {
+      white-space: normal !important;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table tr td:last-child {
+      padding: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .input-table input {
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    :is(#tabPanels, #pTabPanels) .lockable-wrap {
+      min-width: 0;
+      max-width: 100%;
+    }
+    :is(#tabPanels, #pTabPanels) .lockable-wrap input {
+      flex: 1 1 0%;
+      width: 0;
+    }
+    :is(#tabPanels, #pTabPanels) .sum-display {
+      display: block;
+      box-sizing: border-box;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 32px;
+      height: auto !important;
+      padding: 6px 8px;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+  }
 
   /* 表格式輸入(對應 Excel 截圖風格) */
   .input-table {
@@ -2031,7 +2131,7 @@
     transition: background 0.15s, color 0.15s;
   }
   .pg-pct-input:hover { background: #F2F1EB; }
-  .pg-pct-input:focus-within { background: #1F2F2A; color: #fff; }
+  .pg-pct-input:focus-within:not(:has(> .ck-completed-focus)) { background: #1F2F2A; color: #fff; }
   .pg-pct-input .pt-input-pct {
     width: 28px;
     border: none;
@@ -2170,7 +2270,7 @@
     -webkit-appearance: none; margin: 0;
   }
   .pg-value .pt-input:hover { background: #F2F1EB; }
-  .pg-value .pt-input:focus { background: #1F2F2A; color: #fff; }
+  .pg-value .pt-input:focus:not(.ck-completed-focus) { background: #1F2F2A; color: #fff; }
 
   /* 仲介其它：閒置時顯示四位，原始 input 值與草稿保持不變。 */
   .pt-wan-wrap { position: relative; display: inline-block; width: 88px; height: 22px; vertical-align: middle; }
@@ -2379,6 +2479,30 @@
     width: 38px; height: 4px; border-radius: 2px;
     background: #C8C7C0; margin: 2px auto 8px;
   }
+  /* 固定訊息列：顯示／清除提示不改變按鍵座標。 */
+  .calc-kb-notice {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    margin: 0 0 6px;
+    padding: 0 4px;
+    color: #B02E2E;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+    text-align: center;
+    white-space: nowrap;
+    visibility: hidden;
+    pointer-events: none;
+    user-select: none;
+  }
+  .calc-kb-notice.show { visibility: visible; }
+
   /* 數字鍵盤作用中的欄位:模擬瀏覽器原生 :focus 樣式(因為我們把欄位 blur 掉,
      原生 focus 觸發不到 → 用 ck-active class 手動套上一樣的 background + box-shadow) */
   /* 計算機編輯中的欄位:明顯高亮,方便 Tab 切換時辨識 */
@@ -2805,17 +2929,17 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <!-- 第一排:出售價格 / 取得房屋價格 / 級距 -->
     <div class="dash-row">
       <div class="dash-cell">
-        <div class="dash-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
+        <div class="dash-label" id="p_sale-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="p_sale" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_sale" aria-labelledby="p_sale-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">買方總支出</span><span class="v"><span id="p_buyer_total">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
+        <div class="dash-label" id="p_buy-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="p_buy" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_buy" aria-labelledby="p_buy-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">取得可列舉</span><span class="v"><span id="p_buy_taxfee">—</span> 萬</span></div>
@@ -2837,25 +2961,25 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <!-- 第二排:第一手價格 / 預售已付款 / 預售未付款 -->
     <div class="dash-row" style="margin-top: 14px;">
       <div class="dash-cell">
-        <div class="dash-label label-sm"><span><span style="color:#C44E4E;">第一手</span>價格</span></div>
+        <div class="dash-label label-sm" id="p_first_price-label"><span><span style="color:#C44E4E;">第一手</span>價格</span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input req" id="p_first_price" inputmode="decimal">
+          <input type="number" class="dash-input req" id="p_first_price" aria-labelledby="p_first_price-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote center presale-expense-note"><span class="presale-expense-note-text">無法列舉上限額已取消</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label label-sm"><span>預售<span style="color:#C44E4E;">已付款</span></span></div>
+        <div class="dash-label label-sm" id="p_paid-label"><span>預售<span style="color:#C44E4E;">已付款</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="p_paid" inputmode="decimal">
+          <input type="number" class="dash-input opt" id="p_paid" aria-labelledby="p_paid-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote solid-note"><span class="k">換算第一手合約價占比</span><span class="v" id="p_paid_pct">—</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label label-sm"><span>預售<span style="color:#C44E4E;">未付款</span></span></div>
+        <div class="dash-label label-sm" id="p_unpaid-label"><span>預售<span style="color:#C44E4E;">未付款</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input opt" id="p_unpaid" inputmode="decimal">
+          <input type="number" class="dash-input opt" id="p_unpaid" aria-labelledby="p_unpaid-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote solid-note"><span class="k">換算第一手合約價占比</span><span class="v" id="p_unpaid_pct">—</span></div>
@@ -2867,33 +2991,33 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <!-- 第三排:買方費%/買方費額/屋主目標/屋主費% -->
     <div class="dash-fee">
       <div class="dash-cell">
-        <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
+        <div class="dash-label" id="p_buyer_rate-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered opt" id="p_buyer_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_buyer_rate" aria-labelledby="p_buyer_rate-label" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="p_buyer_pct_amt">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
+        <div class="dash-label" id="p_buyer_fixed-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered opt" id="p_buyer_fixed" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_buyer_fixed" aria-labelledby="p_buyer_fixed-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v" id="p_buyer_pct">—</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
+        <div class="dash-label" id="p_target-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered opt" id="p_target" step="0.01" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="p_target" aria-labelledby="p_target-label" step="0.01" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote note-cream"><span class="k">目前利潤</span><span class="v"><span id="p_target_now">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
+        <div class="dash-label" id="p_seller_rate-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="p_seller_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="p_seller_rate" aria-labelledby="p_seller_rate-label" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote note-cream"><span class="k">換算</span><span class="v"><span id="p_seller_amt">—</span> 萬</span></div>
@@ -2938,27 +3062,27 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <div class="tab-content active" id="ptab-psell">
       <div class="card" style="padding: 12px;">
         <table class="input-table">
-          <tr class="readonly"><td>換約費 ( 給建商 )<br><span style="font-size:9px;color:#999;">第一手價×千分之一</span></td><td><div class="lockable-wrap">
+          <tr class="readonly"><td id="pp_s_swap_display-label">換約費 ( 給建商 )<br><span style="font-size:9px;color:#999;">第一手價×千分之一</span></td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn permanent" aria-label="永久鎖定" tabindex="-1"></button>
-            <input type="number" id="pp_s_swap_display" value="0" readonly>
+            <input type="number" id="pp_s_swap_display" aria-labelledby="pp_s_swap_display-label" value="0" readonly>
           </div></td></tr>
-          <tr><td>代書費<br><span style="font-size:9px;color:#999;">買賣雙方各自</span></td><td><div class="lockable-wrap">
+          <tr><td id="pp_s_daishu-label">代書費<br><span style="font-size:9px;color:#999;">買賣雙方各自</span></td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn" data-locked="true" data-lock-target="pp_s_daishu" aria-label="鎖定代書費">
               <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
-            <input type="number" id="pp_s_daishu" placeholder="3000" data-default="3000" inputmode="numeric" class="is-locked" readonly>
+            <input type="number" id="pp_s_daishu" aria-labelledby="pp_s_daishu-label" placeholder="3000" data-default="3000" inputmode="numeric" class="is-locked" readonly>
           </div></td></tr>
-          <tr class="readonly"><td>履約保證費用<br><span style="font-size:9px;color:#999;">(成交價-第一手價格+已付款)×萬分之三</span></td><td><div class="lockable-wrap">
+          <tr class="readonly"><td id="pp_s_escrow_display-label">履約保證費用<br><span style="font-size:9px;color:#999;">(成交價-第一手價格+已付款)×萬分之三</span></td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn permanent" aria-label="永久鎖定" tabindex="-1"></button>
-            <input type="number" id="pp_s_escrow_display" value="0" readonly>
+            <input type="number" id="pp_s_escrow_display" aria-labelledby="pp_s_escrow_display-label" value="0" readonly>
           </div></td></tr>
-          <tr><td>廣告費</td><td><input type="number" id="pp_s_ad" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr><td>其它</td><td><input type="number" id="pp_s_other" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr><td id="pp_s_ad-label">廣告費</td><td><input type="number" id="pp_s_ad" aria-labelledby="pp_s_ad-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr><td id="pp_s_other-label">其它</td><td><input type="number" id="pp_s_other" aria-labelledby="pp_s_other-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
           <tr class="sum-row"><td>出售雜項總額</td><td><div class="sum-display" id="psum_sell_misc">—</div></td></tr>
           <tr class="auto-row"><td>仲介費</td><td><div class="sum-display" id="psum_agent">—</div></td></tr>
           <tr class="sum-row"><td>出售雜項+仲介費</td><td><div class="sum-display" id="psum_sell_total">—</div></td></tr>
           <tr class="danger"><td>應繳房地合一</td><td><div class="sum-display" id="psum_tax">—</div></td></tr>
-          <tr class="row-opt"><td>不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="pp_s_nonded" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-opt"><td id="pp_s_nonded-label">不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="pp_s_nonded" aria-labelledby="pp_s_nonded-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
         </table>
       </div>
     </div>
@@ -2967,15 +3091,15 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <div class="tab-content" id="ptab-pbuy">
       <div class="card" style="padding: 12px;">
         <table class="input-table">
-          <tr class="readonly"><td>購屋成本<br><span style="font-size:9px;color:#999;">由上方購屋價格帶入</span></td><td><input type="number" id="pp_c_purchase_display" value="0" readonly></td></tr>
-          <tr class="row-detail"><td>代書費收據</td><td><input type="number" id="pp_c_daishu" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>購入時仲介費發票</td><td><input type="number" id="pp_c_agent" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>履約保證發票</td><td><input type="number" id="pp_c_escrow_inv" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>換約費收據</td><td><input type="number" id="pp_c_swap_inv" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>其它</td><td><input type="number" id="pp_c_other" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>可列舉概略總額</td><td><input type="number" id="pp_c_misc" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="readonly"><td id="pp_c_purchase_display-label">購屋成本<br><span style="font-size:9px;color:#999;">由上方購屋價格帶入</span></td><td><input type="number" id="pp_c_purchase_display" aria-labelledby="pp_c_purchase_display-label" value="0" readonly></td></tr>
+          <tr class="row-detail"><td id="pp_c_daishu-label">代書費收據</td><td><input type="number" id="pp_c_daishu" aria-labelledby="pp_c_daishu-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="pp_c_agent-label">購入時仲介費發票</td><td><input type="number" id="pp_c_agent" aria-labelledby="pp_c_agent-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="pp_c_escrow_inv-label">履約保證發票</td><td><input type="number" id="pp_c_escrow_inv" aria-labelledby="pp_c_escrow_inv-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="pp_c_swap_inv-label">換約費收據</td><td><input type="number" id="pp_c_swap_inv" aria-labelledby="pp_c_swap_inv-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="pp_c_other-label">其它</td><td><input type="number" id="pp_c_other" aria-labelledby="pp_c_other-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="pp_c_misc-label">可列舉概略總額</td><td><input type="number" id="pp_c_misc" aria-labelledby="pp_c_misc-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
           <tr class="sum-row"><td>取得時稅費總額</td><td><div class="sum-display" id="psum_buy_cost">—</div></td></tr>
-          <tr class="row-opt"><td>不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="pp_c_nonded" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-opt"><td id="pp_c_nonded-label">不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="pp_c_nonded" aria-labelledby="pp_c_nonded-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
         </table>
       </div>
     </div>
@@ -3014,17 +3138,17 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   <div class="dash">
     <div class="dash-row">
       <div class="dash-cell">
-        <div class="dash-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
+        <div class="dash-label" id="d_sale-label"><span>出售價格<span style="color:#C44E4E;">合約價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="d_sale" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_sale" aria-labelledby="d_sale-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">買方總支出</span><span class="v"><span id="d_buyer_total">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
+        <div class="dash-label" id="d_buy-label"><span>屋主<span style="color:#C44E4E;">取得房屋價格</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="d_buy" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_buy" aria-labelledby="d_buy-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">取得可列舉</span><span class="v"><span id="d_buy_taxfee">—</span> 萬</span></div>
@@ -3056,33 +3180,33 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
     <div class="dash-fee">
       <div class="dash-cell">
-        <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
+        <div class="dash-label" id="d_buyer_rate-label"><span>買方<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req bg-deep" id="d_buyer_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req bg-deep" id="d_buyer_rate" aria-labelledby="d_buyer_rate-label" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="d_buyer_pct_amt">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
+        <div class="dash-label" id="d_buyer_fixed-label"><span>買方<span style="color:#C44E4E;">預計服務費額</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered opt" id="d_buyer_fixed" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt" id="d_buyer_fixed" aria-labelledby="d_buyer_fixed-label" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v" id="d_buyer_pct">—</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
+        <div class="dash-label" id="d_target-label"><span>屋主<span style="color:#C44E4E;">目標稅後利潤</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered opt bg-light" id="d_target" step="0.01" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered opt bg-light" id="d_target" aria-labelledby="d_target-label" step="0.01" inputmode="decimal">
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">目前利潤</span><span class="v"><span id="d_target_now">—</span> 萬</span></div>
       </div>
       <div class="dash-cell">
-        <div class="dash-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
+        <div class="dash-label" id="d_seller_rate-label"><span>屋主<span style="color:#C44E4E;">預計服務費%</span></span></div>
         <div class="dash-input-wrap">
-          <input type="number" class="dash-input unit-centered req" id="d_seller_rate" step="0.1" inputmode="decimal">
+          <input type="number" class="dash-input unit-centered req" id="d_seller_rate" aria-labelledby="d_seller_rate-label" step="0.1" inputmode="decimal">
           <span class="dash-input-suffix">%</span>
         </div>
         <div class="dash-subnote"><span class="k">換算</span><span class="v"><span id="d_seller_amt">—</span> 萬</span></div>
@@ -3130,34 +3254,34 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <div class="tab-content active" id="tab-sell">
       <div class="card" style="padding: 12px;">
         <table class="input-table">
-          <tr class="row-rare"><td>土地增值稅<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_s_landtax" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr><td>簽約金</td><td><div class="lockable-wrap">
+          <tr class="row-rare"><td id="ap_s_landtax-label">土地增值稅<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_s_landtax" aria-labelledby="ap_s_landtax-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr><td id="ap_s_sign-label">簽約金</td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn" data-locked="true" data-lock-target="ap_s_sign" aria-label="鎖定簽約金">
               <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
-            <input type="number" id="ap_s_sign" placeholder="1000" data-default="1000" inputmode="numeric" class="is-locked" readonly>
+            <input type="number" id="ap_s_sign" aria-labelledby="ap_s_sign-label" placeholder="1000" data-default="1000" inputmode="numeric" class="is-locked" readonly>
           </div></td></tr>
-          <tr><td>實價登錄</td><td><div class="lockable-wrap">
+          <tr><td id="ap_s_log-label">實價登錄</td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn" data-locked="true" data-lock-target="ap_s_log" aria-label="鎖定實價登錄">
               <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
-            <input type="number" id="ap_s_log" placeholder="2000" data-default="2000" inputmode="numeric" class="is-locked" readonly>
+            <input type="number" id="ap_s_log" aria-labelledby="ap_s_log-label" placeholder="2000" data-default="2000" inputmode="numeric" class="is-locked" readonly>
           </div></td></tr>
-          <tr class="readonly"><td>履約保證費用<br><span style="font-size:9px;color:#999;">成交價×萬分之三</span></td><td><div class="lockable-wrap">
+          <tr class="readonly"><td id="ap_s_escrow_display-label">履約保證費用<br><span style="font-size:9px;color:#999;">成交價×萬分之三</span></td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn permanent" aria-label="永久鎖定" tabindex="-1"></button>
-            <input type="number" id="ap_s_escrow_display" value="0" readonly>
+            <input type="number" id="ap_s_escrow_display" aria-labelledby="ap_s_escrow_display-label" value="0" readonly>
           </div></td></tr>
-          <tr><td>銀行塗銷費用</td><td><div class="lockable-wrap">
+          <tr><td id="ap_s_bank-label">銀行塗銷費用</td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn" data-locked="true" data-lock-target="ap_s_bank" aria-label="鎖定銀行塗銷費用">
               <svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </button>
-            <input type="number" id="ap_s_bank" placeholder="5000" data-default="5000" inputmode="numeric" class="is-locked" readonly>
+            <input type="number" id="ap_s_bank" aria-labelledby="ap_s_bank-label" placeholder="5000" data-default="5000" inputmode="numeric" class="is-locked" readonly>
           </div></td></tr>
           <tr class="sum-row"><td>出售雜項總額</td><td><div class="sum-display" id="sum_sell_misc">—</div></td></tr>
           <tr class="auto-row"><td>仲介費</td><td><div class="sum-display" id="sum_agent">—</div></td></tr>
           <tr class="sum-row"><td>出售雜項+仲介費</td><td><div class="sum-display" id="sum_sell_total">—</div></td></tr>
           <tr class="danger"><td>應繳房地合一</td><td><div class="sum-display" id="sum_tax">—</div></td></tr>
-          <tr class="row-opt"><td>不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_c_nonded" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-opt"><td id="ap_c_nonded-label">不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_c_nonded" aria-labelledby="ap_c_nonded-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
         </table>
       </div>
     </div>
@@ -3166,19 +3290,19 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <div class="tab-content" id="tab-buy">
       <div class="card" style="padding: 12px;">
         <table class="input-table">
-          <tr class="readonly"><td>購屋成本<br><span style="font-size:9px;color:#999;">由上方購屋價格帶入</span></td><td><input type="number" id="ap_c_purchase_display" value="0" readonly></td></tr>
-          <tr class="row-detail"><td>購屋契稅</td><td><input type="number" id="ap_c_tax" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>土地建物印花稅收據</td><td><input type="number" id="ap_c_stamp" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>規費收據</td><td><input type="number" id="ap_c_fee" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>代書費收據</td><td><input type="number" id="ap_c_daishu" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>履約保證發票</td><td><input type="number" id="ap_c_escrow_inv" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>法拍代墊款利息</td><td><input type="number" id="ap_c_lawpay" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>外水電、瓦斯</td><td><input type="number" id="ap_c_utility" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>裝修費<br><span style="font-size:9px;color:#999;">非2年內能耗竭</span></td><td><input type="number" id="ap_c_decor" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>購入時仲介費發票</td><td><input type="number" id="ap_c_agent" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-detail"><td>可列舉概略總額</td><td><input type="number" id="ap_c_misc" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="readonly"><td id="ap_c_purchase_display-label">購屋成本<br><span style="font-size:9px;color:#999;">由上方購屋價格帶入</span></td><td><input type="number" id="ap_c_purchase_display" aria-labelledby="ap_c_purchase_display-label" value="0" readonly></td></tr>
+          <tr class="row-detail"><td id="ap_c_tax-label">購屋契稅</td><td><input type="number" id="ap_c_tax" aria-labelledby="ap_c_tax-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_stamp-label">土地建物印花稅收據</td><td><input type="number" id="ap_c_stamp" aria-labelledby="ap_c_stamp-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_fee-label">規費收據</td><td><input type="number" id="ap_c_fee" aria-labelledby="ap_c_fee-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_daishu-label">代書費收據</td><td><input type="number" id="ap_c_daishu" aria-labelledby="ap_c_daishu-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_escrow_inv-label">履約保證發票</td><td><input type="number" id="ap_c_escrow_inv" aria-labelledby="ap_c_escrow_inv-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_lawpay-label">法拍代墊款利息</td><td><input type="number" id="ap_c_lawpay" aria-labelledby="ap_c_lawpay-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_utility-label">外水電、瓦斯</td><td><input type="number" id="ap_c_utility" aria-labelledby="ap_c_utility-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_decor-label">裝修費<br><span style="font-size:9px;color:#999;">非2年內能耗竭</span></td><td><input type="number" id="ap_c_decor" aria-labelledby="ap_c_decor-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_agent-label">購入時仲介費發票</td><td><input type="number" id="ap_c_agent" aria-labelledby="ap_c_agent-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-detail"><td id="ap_c_misc-label">可列舉概略總額</td><td><input type="number" id="ap_c_misc" aria-labelledby="ap_c_misc-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
           <tr class="sum-row"><td>取得時稅費總額</td><td><div class="sum-display" id="sum_buy_cost">—</div></td></tr>
-          <tr class="row-opt"><td>不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_c_nonded2" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-opt"><td id="ap_c_nonded2-label">不可抵扣成本<br><span style="font-size:9px;color:#C44E4E;white-space:nowrap;">不列入（房地合一稅基、出售可列舉額）公式</span></td><td><input type="number" id="ap_c_nonded2" aria-labelledby="ap_c_nonded2-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
         </table>
       </div>
     </div>
@@ -3187,10 +3311,10 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
     <div class="tab-content" id="tab-other">
       <div class="card" style="padding: 12px;">
         <table class="input-table">
-          <tr class="row-rare"><td>土地漲價總數額<br><span style="font-size:9px;color:#999;">公告土地現值漲價部分<br><span style="color:#C44E4E;">非土地增值稅</span></span></td><td><input type="number" id="ap_o_landgain" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
-          <tr class="row-rare"><td>持有六年自用免稅<br><span style="font-size:9px;color:#999;">由級距自動帶入<br>(10% 時,免稅額為 400 萬)</span></td><td><div class="lockable-wrap">
+          <tr class="row-rare"><td id="ap_o_landgain-label">土地漲價總數額<br><span style="font-size:9px;color:#999;">公告土地現值漲價部分<br><span style="color:#C44E4E;">非土地增值稅</span></span></td><td><input type="number" id="ap_o_landgain" aria-labelledby="ap_o_landgain-label" placeholder="0" data-default="0" inputmode="numeric"></td></tr>
+          <tr class="row-rare"><td id="ap_o_selfuse-label">持有六年自用免稅<br><span style="font-size:9px;color:#999;">由級距自動帶入<br>(10% 時,免稅額為 400 萬)</span></td><td><div class="lockable-wrap">
             <button type="button" class="lock-btn permanent" aria-label="永久鎖定" tabindex="-1"></button>
-            <input type="number" id="ap_o_selfuse" placeholder="0" data-default="0" inputmode="numeric" readonly>
+            <input type="number" id="ap_o_selfuse" aria-labelledby="ap_o_selfuse-label" placeholder="0" data-default="0" inputmode="numeric" readonly>
           </div></td></tr>
         </table>
       </div>
@@ -3267,7 +3391,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.12D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.19D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3276,8 +3400,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
 <!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
 <div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
-<div class="calc-kb" id="calcKb">
+<div class="calc-kb" id="calcKb" inert>
   <div class="calc-kb-grip"></div>
+  <div class="calc-kb-notice" id="calcKbNotice" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="calc-kb-keys" id="calcKbKeys">
     <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
     <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
@@ -3304,10 +3429,10 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
 <!-- ===== 自訂級距選單 ===== -->
 <div class="rate-sheet-mask" id="rateSheetMask"></div>
-<div class="rate-sheet" id="rateSheet" role="dialog" aria-label="選擇稅率級距">
+<div class="rate-sheet" id="rateSheet" role="dialog" aria-modal="true" aria-labelledby="rateSheetTitle" aria-hidden="true" inert>
   <div class="rate-sheet-handle"></div>
-  <div class="rate-sheet-title">選擇適用稅率級距</div>
-  <div id="rateOptions">
+  <div class="rate-sheet-title" id="rateSheetTitle">選擇適用稅率級距</div>
+  <div id="rateOptions" role="listbox" tabindex="0" aria-labelledby="rateSheetTitle">
     <div class="rate-sheet-option" data-value="0.45">
       <div>
         <div class="rate-num">45%</div>
@@ -3407,14 +3532,21 @@ const RATE_SELECT_ID = { ready: 'd_rate_select', preview: 'p_rate_select' };
 const PARTY_FIELD_VALUES = { pt_loan_rate: '80', pt_agent_other: '0', p_pt_agent_other: '0' };
 // 正式案件只接受完整數字；不能把未完成算式的開頭當成金額。
 // 保留原位數，不在資料層四捨五入。舊檔中的非法字串不再進入計算。
-// 載入失敗不能當成「沒有案件」再覆写原資料；每個儲存鍵各自保護。
+// 一般設定讀取保護獨立保留；舊試算讀不到時，整筆清空後可重新輸入。
 const blockedStorageKeys = new Set();
 const storageIssueNotices = new Map();
+const failedCaseLoads = new Set();
+const pendingCaseWriteNotices = new Set();
 function reportStorageIssue(key, reading) {
   const token = key + (reading ? ':read' : ':write');
   const now = Date.now();
   if (storageIssueNotices.has(token) && now - storageIssueNotices.get(token) < 2000) return;
   storageIssueNotices.set(token, now);
+  if (!reading && (key === caseStorageKey('ready') || key === caseStorageKey('preview'))) {
+    pendingCaseWriteNotices.add(key);
+    setTimeout(showPendingCaseNotice, 0);
+    return;
+  }
   setTimeout(() => showToast(reading
     ? '資料讀取失敗，原資料已保留，請重新開啟'
     : '資料未能儲存，請勿關閉 APP'), 0);
@@ -3425,7 +3557,7 @@ function readStoredText(key) {
 }
 function writeStoredText(key, text) {
   if (blockedStorageKeys.has(key)) { reportStorageIssue(key, true); return false; }
-  try { localStorage.setItem(key, text); return true; }
+  try { localStorage.setItem(key, text); pendingCaseWriteNotices.delete(key); return true; }
   catch(e) { reportStorageIssue(key, false); return false; }
 }
 function parseSavedObject(json) {
@@ -3444,17 +3576,51 @@ function readStoredObject(key) {
 function parseSavedCase(json, ids) {
   const state = parseSavedObject(json);
   if (!state) return null;
-  // 空字串是合法空案；null、未完成算式等全壞欄值不能擋住有效備援。
-  const usable = ids.some(id => Object.prototype.hasOwnProperty.call(state, id) &&
-    (normalizeNumericFieldValue(id, state[id]) !== '' ||
-     (typeof state[id] === 'string' && state[id].trim() === '')));
-  return usable ? state : null;
+  // 明確未知版本交由載入流程整筆清空，不採用部分欄位。
+  if (hasUnsupportedCaseStateVersion(state)) return state;
+  // 缺欄仍相容舊案；已存在的已知欄位則必須全部可讀。
+  const present = ids.filter(id => Object.prototype.hasOwnProperty.call(state, id));
+  if (!present.length || present.some(id =>
+    normalizeNumericFieldValue(id, state[id]) === '' &&
+    !(typeof state[id] === 'string' && state[id].trim() === ''))) return null;
+  if (Object.prototype.hasOwnProperty.call(state, '__inputState')) {
+    const meta = state.__inputState;
+    const allowed = LOCKED_DEFAULT_FIELDS[ids.includes('d_sale') ? 'ready' : 'preview'];
+    if (!meta || typeof meta !== 'object' || Array.isArray(meta) || meta.version !== 1 ||
+        typeof meta.awaitingFirstInput !== 'boolean' || !Array.isArray(meta.cleared) ||
+        meta.cleared.some(id => typeof id !== 'string' || !allowed.includes(id))) return null;
+  }
+  return state;
+}
+// 不支援的版本視為不可讀舊案，且不能回頭載入舊網址。
+function hasUnsupportedCaseStateVersion(state) {
+  const meta = state && state.__inputState;
+  return !!meta && typeof meta === 'object' && !Array.isArray(meta) &&
+    Object.prototype.hasOwnProperty.call(meta, 'version') && meta.version !== 1;
+}
+function caseStorageKey(verKey) {
+  return verKey === 'preview' ? 'house_tax_presale_v1' : 'house_tax_state_v1';
+}
+function markUnreadableCase(key) {
+  failedCaseLoads.add(key);
+}
+function showPendingCaseNotice() {
+  const key = caseStorageKey(currentVerKey());
+  if (!pendingCaseWriteNotices.has(key)) return;
+  pendingCaseWriteNotices.delete(key);
+  // 僅通知實際儲存失敗；隱藏模式留待切入時再說明。
+  showToast('資料未能儲存，請勿關閉 APP');
 }
 function readStoredCase(key, ids) {
-  const json = readStoredText(key);
+  let json;
+  try { json = localStorage.getItem(key); }
+  catch(e) { markUnreadableCase(key); return null; }
   if (json === null) return null;
   const state = parseSavedCase(json, ids);
-  if (!state) { blockedStorageKeys.add(key); reportStorageIssue(key, true); }
+  if (!state || hasUnsupportedCaseStateVersion(state)) {
+    markUnreadableCase(key);
+    return null;
+  }
   return state;
 }
 
@@ -4185,7 +4351,7 @@ function renderFlow(d) {
 // === 三方明細(買方/賣方/仲介)===
 // 三方金額輸入只加顯示層，不把格式化文字寫回 input、計算或保存資料。
 function renderPartyWanInput(id) {
-  return `<span class="pt-wan-wrap"><input type="text" class="pt-input" id="${id}" value="${readPartyField(id)}" inputmode="numeric"><span class="pt-wan-text" aria-hidden="true"></span></span>`;
+  return `<span class="pt-wan-wrap"><input type="text" class="pt-input" id="${id}" aria-labelledby="${id}-label" value="${readPartyField(id)}" inputmode="numeric"><span class="pt-wan-text" aria-hidden="true"></span></span>`;
 }
 function refreshPartyWanDisplays() {
   document.querySelectorAll('.pt-wan-wrap').forEach(wrap => {
@@ -4413,7 +4579,7 @@ function renderPartyTables(d) {
         <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value">${renderPartyWanInput('pt_agent_other')}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label" id="pt_agent_other-label">其它</div><div class="pg-value">${renderPartyWanInput('pt_agent_other')}</div><div class="pg-unit">萬</div></div>
       </div>
     </div>
 
@@ -4454,6 +4620,59 @@ function renderPartyTables(d) {
   }
   refreshPartyWanDisplays();
 }
+
+// 焦點資格只跟介面的實際開關狀態同步，不寫入案件或偏好資料。
+(function setupInteractiveRegions(){
+  const displayOnlyIds = ['ap_s_escrow_display','ap_c_purchase_display',
+    'pp_s_swap_display','pp_s_escrow_display','pp_c_purchase_display','ap_o_selfuse'];
+  function setInert(el, value){ if (el && el.inert !== value) el.inert = value; }
+  window.__syncInteractiveRegions = function(){
+    for (const id of ['tabPanels','pTabPanels']) {
+      const panel = document.getElementById(id);
+      if (panel) setInert(panel, panel.classList.contains('hidden'));
+    }
+    document.querySelectorAll('.tab-content, .party-content').forEach(el => {
+      setInert(el, !el.classList.contains('active'));
+    });
+    document.querySelectorAll('.collapse-section').forEach(section => {
+      const open = section.classList.contains('open');
+      const body = section.querySelector('.collapse-section-body');
+      const trigger = section.querySelector('.collapse-section-header');
+      setInert(body, !open);
+      if (trigger) trigger.setAttribute('aria-expanded', String(open));
+    });
+    for (const [panelId, triggerId] of [['tabPanels','collapseBtn'],['pTabPanels','pCollapseBtn']]) {
+      const panel = document.getElementById(panelId), trigger = document.getElementById(triggerId);
+      if (panel && trigger) trigger.setAttribute('aria-expanded', String(!panel.classList.contains('hidden')));
+    }
+    displayOnlyIds.forEach(id => { const el = document.getElementById(id); if (el) el.tabIndex = -1; });
+    document.querySelectorAll('input.ck-bind, input.is-locked').forEach(el => {
+      const index = el.disabled || el.classList.contains('is-locked') || displayOnlyIds.includes(el.id) ? -1 : 0;
+      if (el.tabIndex !== index) el.tabIndex = index;
+    });
+  };
+  document.querySelectorAll('#rateOpenBtn, #pRateOpenBtn, .collapse-section-header').forEach(el => {
+    el.classList.add('ui-key-control');
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    if (el.matches('.dash-rate-wrap')) el.setAttribute('aria-haspopup', 'dialog');
+    else {
+      const body = document.getElementById(el.dataset.target)?.querySelector('.collapse-section-body');
+      if (body) { body.id = el.dataset.target + 'Panel'; el.setAttribute('aria-controls', body.id); }
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== ' ')) return;
+    if (document.getElementById('calcKb')?.classList.contains('show') ||
+        document.getElementById('rateSheet')?.classList.contains('show')) return;
+    const el = event.target;
+    if (!el?.matches?.('.ui-key-control') || el.closest('[inert]')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (!event.repeat) el.click();
+  }, true);
+  window.__syncInteractiveRegions();
+})();
 
 // === 鎖定欄位:點鎖頭切換可改/鎖定 ===
 const LOCK_SVG = {
@@ -4521,6 +4740,7 @@ document.querySelectorAll('.lock-btn').forEach(btn => {
       target.blur();
     }
     saveLockState();
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -4560,6 +4780,7 @@ function loadLockState() {
   });
 }
 loadLockState();
+window.__syncInteractiveRegions();
 
 // === 自訂預設值持久化 ===
 // 使用者解鎖鎖定欄位、輸入新值、再鎖回去 → 該值成為新預設值(data-default)
@@ -4607,6 +4828,7 @@ document.querySelectorAll('.collapse-section-header').forEach(h => {
     const sec = document.getElementById(id);
     if (sec) {
       sec.classList.toggle('open');
+      window.__syncInteractiveRegions();
       // 公式流程展開時:DOM 寬度才能量到,需要重跑自適應
       if (id === 'flowSection' && sec.classList.contains('open')) {
         requestAnimationFrame(() => {
@@ -4623,6 +4845,7 @@ document.querySelectorAll('.party-tab').forEach(tab => {
     const p = tab.dataset.party;
     document.querySelectorAll('.party-tab').forEach(t => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.party-content').forEach(c => c.classList.toggle('active', c.id === 'party-' + p));
+    window.__syncInteractiveRegions();
     refreshPartyWanDisplays();
   });
 });
@@ -4677,21 +4900,141 @@ document.addEventListener('input', (e) => {
   }
 });
 // === 禁止輸入負數(屋主目標稅後利潤 d_target / p_target 除外)===
+// 提示只保存暫時 UI 狀態，不參與欄位提交或保存資料。
+const negativeNoticeUI = (() => {
+  let revision = 0, message = null, timer = null, positionFrame = null;
+  let pageSpace = null, pagePointerRevision = 0;
+  const pagePointers = new Map(), heldPageSpaces = new Set();
+  function releasePageSpace(){
+    const space = pageSpace;
+    pageSpace = null;
+    if (space && pagePointers.size) {
+      // The notice still expires on time; its row cannot move under a held pointer.
+      if (!heldPageSpaces.has(space)) space.style.height = space.offsetHeight + 'px';
+      heldPageSpaces.add(space);
+      return;
+    }
+    if (space) space.remove();
+    heldPageSpaces.delete(space);
+  }
+  function releaseHeldPageSpaces(){
+    if (pagePointers.size) return;
+    for (const space of heldPageSpaces) {
+      space.remove();
+      if (pageSpace === space) pageSpace = null;
+    }
+    heldPageSpaces.clear();
+  }
+  document.addEventListener('pointerdown', e => {
+    // A notice can be created by Enter while another pointer is already held.
+    pagePointers.set(e.pointerId, {serial: ++pagePointerRevision, target: e.target, id: e.target.id});
+  }, true);
+  function finishPagePointer(e){
+    if (!pagePointers.has(e.pointerId)) return;
+    const pointerRevision = pagePointers.get(e.pointerId);
+    // Compatibility mouseup/click must finish against the original layout first.
+    setTimeout(() => {
+      if (pagePointers.get(e.pointerId) === pointerRevision) pagePointers.delete(e.pointerId);
+      releaseHeldPageSpaces();
+      if (!pagePointers.size) schedulePosition();
+    }, 0);
+  }
+  document.addEventListener('pointerup', finishPagePointer, true);
+  document.addEventListener('pointercancel', finishPagePointer, true);
+  window.addEventListener('blur', () => { pagePointers.clear(); releaseHeldPageSpaces(); schedulePosition(); });
+  const mode = () => document.body.classList.contains('is-preview') ? 'preview' : 'ready';
+  const strip = () => document.getElementById('calcKbNotice');
+  function clear(){
+    if (pageSpace && pagePointers.size) releasePageSpace();
+    clearTimeout(timer); timer = null; message = null;
+    if (positionFrame !== null) cancelAnimationFrame(positionFrame);
+    positionFrame = null;
+    [strip(), document.getElementById('negToast')].forEach(el => {
+      if (!el) return;
+      el.classList.remove('show'); el.textContent = '';
+      delete el.dataset.sourceField; delete el.dataset.sourceMode;
+    });
+    releasePageSpace();
+  }
+  function positionPageNotice(){
+    positionFrame = null;
+    const toast = document.getElementById('negToast');
+    if (!message || !toast?.classList.contains('show')) return;
+    const source = document.getElementById(message.field);
+    let anchor = source?.closest('.dash-row, .dash-fee, .input-table tr, .pg-row') || source?.parentElement;
+    if (!anchor?.parentElement) return;
+    // Insert after held targets as well as the source, so adding a notice cannot
+    // move an unfinished click. Its normal source position is restored after click.
+    for (const pointer of pagePointers.values()) {
+      const target = pointer.target?.isConnected ? pointer.target : document.getElementById(pointer.id);
+      if (!target?.getClientRects().length || target.closest('#calcKb, .neg-notice-space')) continue;
+      const heldAnchor = target.closest('.dash-row, .dash-fee, .input-table tr, .pg-row, .tabs-wrap, .party-tabs, .collapse-section-header, .sticky-top');
+      if (heldAnchor && anchor !== heldAnchor && !heldAnchor.contains(anchor) && !anchor.contains(heldAnchor) &&
+          (anchor.compareDocumentPosition(heldAnchor) & Node.DOCUMENT_POSITION_FOLLOWING)) anchor = heldAnchor;
+    }
+    // Following content gets actual layout space, never an overlay over labels.
+    if (!pageSpace || pageSpace.previousElementSibling !== anchor) {
+      releasePageSpace();
+      const tableRow = anchor.tagName === 'TR';
+      pageSpace = document.createElement(tableRow ? 'tr' : 'div');
+      pageSpace.className = 'neg-notice-space';
+      let holder = pageSpace;
+      if (tableRow) {
+        holder = document.createElement('td'); holder.colSpan = 2;
+        pageSpace.appendChild(holder);
+      }
+      toast.classList.add('neg-toast-inline');
+      toast.style.removeProperty('top'); toast.style.removeProperty('bottom');
+      holder.appendChild(toast);
+      anchor.after(pageSpace);
+    }
+  }
+  function schedulePosition(){
+    if (message && positionFrame === null) positionFrame = requestAnimationFrame(positionPageNotice);
+  }
+  function render(){
+    if (!message || message.mode !== mode() || performance.now() >= message.until || document.getElementById('rateSheet')?.classList.contains('show')) { clear(); return; }
+    const inKeyboard = document.getElementById('calcKb')?.classList.contains('show');
+    let toast = document.getElementById('negToast');
+    if (!inKeyboard && !toast) {
+      toast = document.createElement('div'); toast.id = 'negToast'; toast.className = 'neg-toast';
+      toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
+      toast.style.maxWidth = 'calc(100vw - 24px)'; toast.style.boxSizing = 'border-box';
+      document.body.appendChild(toast);
+    }
+    [strip(), toast].forEach(el => {
+      if (!el) return;
+      const active = inKeyboard ? el === strip() : el === toast;
+      el.classList.toggle('show', active); el.textContent = active ? message.text : '';
+      if (active) { el.dataset.sourceField = message.field; el.dataset.sourceMode = message.mode; }
+    });
+    if (!inKeyboard) positionPageNotice();
+    else releasePageSpace();
+  }
+  function show(el){
+    const label = (el.closest('.dash-cell')?.querySelector('.dash-label')?.textContent || el.closest('.input-table tr')?.querySelector('td')?.textContent || '').replace(/\s+/g, '').trim();
+    const shortLabel = label.length > 8 ? label.slice(0, 8) + '…' : label;
+    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now()+1400, text: (shortLabel ? shortLabel+'：' : '')+'不可輸入負數'};
+    const serial = message.serial;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, 1400);
+    render();
+  }
+  function closed(previous, allowCurrent){
+    if (allowCurrent && message && message.serial > previous) render();
+    else clear();
+  }
+  window.addEventListener('scroll', schedulePosition, {passive:true});
+  window.addEventListener('resize', schedulePosition, {passive:true});
+  window.visualViewport?.addEventListener('resize', schedulePosition, {passive:true});
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { pagePointers.clear(); clear(); releaseHeldPageSpaces(); } });
+  return {show, clear, closed, revision: () => revision};
+})();
 function showNegativeInputWarning(el) {
   el.classList.add('neg-blocked');
   clearTimeout(el.__negTimer);
   el.__negTimer = setTimeout(() => el.classList.remove('neg-blocked'), 1200);
-  let toast = document.getElementById('negToast');
-  if (!toast) {
-    toast = document.createElement('div');
-    toast.id = 'negToast';
-    toast.className = 'neg-toast';
-    toast.textContent = '不可輸入負數';
-    document.body.appendChild(toast);
-  }
-  toast.classList.add('show');
-  clearTimeout(window.__negToastTimer);
-  window.__negToastTimer = setTimeout(() => toast.classList.remove('show'), 1400);
+  negativeNoticeUI.show(el);
 }
 // 非計算機來源的保險防護；計算機在提交前已先檢查最終數字。
 document.addEventListener('input', function(e) {
@@ -4741,7 +5084,6 @@ window.addEventListener('resize', () => {
 const STORAGE_KEY = 'house_tax_state_v1';
 
 function saveState() {
-  if (blockedStorageKeys.has(STORAGE_KEY)) { reportStorageIssue(STORAGE_KEY, true); return; }
   capturePartyFields();
   const state = {};
   FIELDS.forEach(id => {
@@ -4760,12 +5102,17 @@ function saveState() {
 }
 
 function loadState() {
-  let state = null;
-  // 先驗證網址案件，無效才改讀本機；有效的清空案件仍優先。
-  try {
-    if (location.hash.length > 1) state = parseSavedCase(decodeURIComponent(location.hash.slice(1)), FIELDS);
-  } catch(e) {}
-  if (!state) state = readStoredCase(STORAGE_KEY, FIELDS);
+  // 本機已保存的案件（包含有效清空案）優先；只有確實沒有本機案件才讀網址備援。
+  // 舊案讀不到時直接清空重新輸入，不讓舊網址把它換成另一份資料。
+  let state = readStoredCase(STORAGE_KEY, FIELDS);
+  if (!state && !failedCaseLoads.has(STORAGE_KEY) && location.hash.length > 1) {
+    try { state = parseSavedCase(decodeURIComponent(location.hash.slice(1)), FIELDS); }
+    catch(e) { state = null; }
+    if (!state || hasUnsupportedCaseStateVersion(state)) {
+      markUnreadableCase(STORAGE_KEY);
+      state = null;
+    }
+  }
   if (!state) return false;
   try {
     let restored = 0;
@@ -4807,11 +5154,12 @@ calc = function() {
 // 只依案件能否有效載入決定初始清空，舊啟動標記不能抹掉有效資料。
 const INIT_FLAG_KEY = 'house_tax_init_v2';
 const _hadSavedState = loadState();
-calc();
 if (!_hadSavedState) {
-  // 沒有可載入案件時，成屋版以清空畫面開始；讀取失敗仍保護原存檔。
+  // 先清空再計算保存，避免啟動時短暫把 HTML 預設值寫成新案件。
   // asInitial → 按鈕維持「清空數值」,不顯示「恢復數值」(無舊值可恢復)
   enterClearedState('ready', { silent: true, asInitial: true });
+} else {
+  calc();
 }
 // 註:v2 標記在預售版啟動流程末端才寫(等兩版都判斷完)
 
@@ -4844,6 +5192,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       panels.classList.remove('hidden');
       cb.classList.remove('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -4854,6 +5203,8 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   if (!panels) return;
   let x0 = 0, y0 = 0, tracking = false;
   panels.addEventListener('touchstart', e => {
+    // 欄位及鎖頭內的操作留給控制項，和預售版保持一致。
+    if (e.target.closest('input, .pt-input, button')) { tracking = false; return; }
     if (e.touches.length !== 1) { tracking = false; return; }
     x0 = e.touches[0].clientX;
     y0 = e.touches[0].clientY;
@@ -4883,6 +5234,28 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   const sheet = $('rateSheet');
   const mask = $('rateSheetMask');
   const opts = document.querySelectorAll('.rate-sheet-option');
+  const listbox = $('rateOptions');
+  const appShell = $('appShell');
+  const installBanner = $('installBanner');
+  let bannerWasInert = false;
+  let returnFocus = null, shellWasInert = false;
+  let pendingClose = null, openGeneration = 0;
+
+  opts.forEach((o, index) => {
+    o.id = 'rateOption' + index;
+    o.setAttribute('role', 'option');
+    o.setAttribute('aria-selected', 'false');
+  });
+
+  function cancelPendingClose() {
+    ++openGeneration;
+    if (pendingClose !== null) clearTimeout(pendingClose);
+    pendingClose = null;
+  }
+  function focusWithoutScroll(element) {
+    if (!element || !element.isConnected || element.closest('[inert]')) return;
+    element.focus({ preventScroll: true });
+  }
 
   // 當前要操作的 select(成屋 d_rate_select / 預售 p_rate_select)
   function activeSelect() {
@@ -4899,21 +5272,57 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const select = activeSelect();
     if (!select) return;
     const preview = isPreview();
+    let selected = null;
     opts.forEach(o => {
       // 預售模式:隱藏 10% 那一項
       const is10 = o.dataset.value === '0.10';
       o.style.display = (preview && is10) ? 'none' : '';
-      o.classList.toggle('selected', o.dataset.value === select.value);
+      const matches = o.dataset.value === select.value;
+      o.classList.toggle('selected', matches);
+      o.setAttribute('aria-selected', String(matches));
+      if (matches && o.style.display !== 'none') selected = o;
     });
+    if (selected) listbox.setAttribute('aria-activedescendant', selected.id);
+    else listbox.removeAttribute('aria-activedescendant');
   }
-  function open() {
+  function open(origin) {
+    // The existing document click-capture guard validates drafts before this.
+    cancelPendingClose();
+    const wasOpen = sheet.classList.contains('show');
+    if (!wasOpen) {
+      returnFocus = origin || (isPreview() ? $('pRateOpenBtn') : $('rateOpenBtn'));
+      shellWasInert = appShell ? appShell.inert : false;
+      bannerWasInert = installBanner ? installBanner.inert : false;
+    }
     syncSelected();
+    sheet.inert = false;
+    sheet.setAttribute('aria-hidden', 'false');
     mask.classList.add('show');
     sheet.classList.add('show');
+    focusWithoutScroll(listbox);
+    if (appShell) appShell.inert = true;
+    if (installBanner) installBanner.inert = true;
   }
   function close() {
+    cancelPendingClose();
+    if (!sheet.classList.contains('show')) return;
     mask.classList.remove('show');
     sheet.classList.remove('show');
+    sheet.inert = true;
+    if (appShell) appShell.inert = shellWasInert;
+    if (installBanner) installBanner.inert = bannerWasInert;
+    const origin = returnFocus;
+    returnFocus = null;
+    focusWithoutScroll(origin);
+    sheet.setAttribute('aria-hidden', 'true');
+  }
+  function scheduleClose() {
+    cancelPendingClose();
+    const generation = openGeneration;
+    pendingClose = setTimeout(() => {
+      pendingClose = null;
+      if (generation === openGeneration) close();
+    }, 120);
   }
 
   // 點成屋的「級距」格 → 開
@@ -4921,16 +5330,16 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   if (dRateBtn) {
     dRateBtn.addEventListener('click', (e) => {
       if (e.target === $('d_rate_select')) return;
-      open();
+      open(dRateBtn);
     });
   }
   // 點預售的「級距」格 → 開(共用同一個彈窗)
   const pRateBtn = $('pRateOpenBtn');
   if (pRateBtn) {
-    pRateBtn.addEventListener('click', () => open());
+    pRateBtn.addEventListener('click', () => open(pRateBtn));
   }
 
-  // 點遮罩關
+  // 點遮罩關閉；上下鍵已套用的選擇不撤銷。
   mask.addEventListener('click', close);
 
   // 寫回「當前版本」的 select,並觸發對應的重算
@@ -4968,33 +5377,31 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   // 點選項 → 套用並關閉
   opts.forEach(o => {
     o.addEventListener('click', () => {
-      if (applyOption(o)) setTimeout(close, 120);
+      if (applyOption(o)) scheduleClose();
     });
   });
 
-  // ESC 關;↑↓ 移動選擇;Enter / 空白鍵確認關閉
+  // Keep Tab and Shift+Tab inside the listbox while the sheet is open.
+  // Capture also prevents the closing key from activating the restored entry.
   document.addEventListener('keydown', (e) => {
     if (!sheet.classList.contains('show')) return;
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      close();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!['Tab', 'Escape', 'ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) return;
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && document.activeElement !== listbox) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (e.key === 'Tab') {
+      focusWithoutScroll(listbox);
       return;
     }
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      moveSelection(1);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      cancelPendingClose();
+      moveSelection(e.key === 'ArrowDown' ? 1 : -1);
       return;
     }
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      moveSelection(-1);
-      return;
-    }
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      close();
-    }
-  });
+    // Escape only closes. Enter/Space keeps the current selection and closes.
+    close();
+  }, true);
 
   // 初始同步一次
   syncSelected();
@@ -5353,7 +5760,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
             <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="p_pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="p_pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="p_pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">其它</div><div class="pg-value">${renderPartyWanInput('p_pt_agent_other')}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label" id="p_pt_agent_other-label">其它</div><div class="pg-value">${renderPartyWanInput('p_pt_agent_other')}</div><div class="pg-unit">萬</div></div>
           </div>
         </div>
 
@@ -5685,6 +6092,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 清空/恢復按鈕外觀跟著版本走(兩版各自獨立的清空狀態)
     if (typeof syncClearBtnForVer === 'function') syncClearBtnForVer();
     writeStoredText(KEY, ver);
+    window.__syncInteractiveRegions();
   }
   // 三區塊(成本明細 / 公式流程 / 三方明細)一鍵全展開或全收合
   function toggleAllSections(ver) {
@@ -5709,6 +6117,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       if (partySec) partySec.classList.add('open');
       if (flowSec) requestAnimationFrame(() => { if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers(); });
     }
+    window.__syncInteractiveRegions();
   }
   // 雙擊「當前已在的版本鈕」→ 全展開/全收合;單擊已在的版本 → 回頂;單擊另一版 → 切版
   let _verLastClk = 0, _verLastBtn = null, _verWasActive = false;
@@ -5761,6 +6170,7 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
       panels.classList.remove('hidden');
       if (cb) cb.classList.remove('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 });
 
@@ -5813,6 +6223,7 @@ document.querySelectorAll('.tab-btn[data-ptab]').forEach(btn => {
       panels.classList.add('hidden');
       cb.classList.add('collapsed');
     }
+    window.__syncInteractiveRegions();
   });
 })();
 
@@ -5836,6 +6247,7 @@ $('collapseBtn').addEventListener('click', () => {
     panels.classList.add('hidden');
     btn.classList.add('collapsed');
   }
+  window.__syncInteractiveRegions();
 });
 
 // 清空 / 恢復切換按鈕(成屋、預售各自獨立)
@@ -5890,6 +6302,7 @@ function updateBtnVisibility() {
   const verKey = currentVerKey();
   const hasSnapshot = clearSnapshots[verKey] !== null;
   restoreBtn.style.display = hasSnapshot ? '' : 'none';
+  setTimeout(showPendingCaseNotice, 0);
 }
 // 保留舊名稱供既有呼叫使用(行為改為更新按鈕顯隱)
 function resetClearBtn() { updateBtnVisibility(); }
@@ -5912,7 +6325,7 @@ function enterClearedState(verKey, opts) {
   if (typeof window.__cancelCalcKbDraft === 'function') window.__cancelCalcKbDraft();
   opts = opts || {};
   if (!opts.silent && !opts.asInitial) {
-    blockedStorageKeys.delete(verKey === 'preview' ? 'house_tax_presale_v1' : 'house_tax_state_v1');
+    blockedStorageKeys.delete(caseStorageKey(verKey));
   }
   // asInitial = true:首次打開的初始清空 — 外觀清空,但按鈕維持「清空數值」、不留 snapshot
   //                   (使用者尚無「上一次數值」可恢復,不顯示「恢復數值」以免誤導)
@@ -6234,15 +6647,52 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const kb       = document.getElementById('calcKb');
   const backdrop = document.getElementById('calcKbBackdrop');
   if (!kb || !backdrop) return;
+  const keyboardInstallBanner = document.getElementById('installBanner');
+  let keyboardBannerWasInert = false;
 
   // 計算機綁定的欄位
 
   let targetInput = null;   // 目前編輯的欄位
+  let _kbEditEpoch = 0;      // 同一欄重新開啟也屬於新的編輯，不沿用舊按壓。
   let expr = '';            // 目前輸入的數字字串
   let touched = false;      // 本次開鍵盤後使用者是否實際編輯過(含按 C/退格清空);用來區分「點進來沒動」與「刻意清空」
 
   let draftSnapshot = null;
   let draftCommitted = false;
+  let nativeTabIntent = null, nativeTabReset = null;
+  let suppressFieldFocus = 0;
+  function clearNativeTabIntent(){
+    nativeTabIntent = null;
+    clearTimeout(nativeTabReset);
+    nativeTabReset = null;
+  }
+  function restoreKbFieldFocus(id, completed=false){
+    clearNativeTabIntent();
+    const input = id && document.getElementById(id);
+    if (!input || !canOpenKb(input) || document.visibilityState === 'hidden') return;
+    if (input.dataset.ckBound !== '1') bindFieldForKb(input);
+    // 完成或取消後保留 Tab 起點，閒置外觀不再沿用編輯中的深底與外框。
+    input.classList.toggle('ck-completed-focus', completed);
+    suppressFieldFocus++;
+    try { input.focus({preventScroll:true}); } finally { suppressFieldFocus--; }
+  }
+  document.addEventListener('keydown', event => {
+    clearNativeTabIntent();
+    if (event.key === 'Tab') document.activeElement?.classList.remove('ck-completed-focus');
+    if (event.key !== 'Tab' || event.defaultPrevented || kb.classList.contains('show') ||
+        document.getElementById('rateSheet')?.classList.contains('show')) return;
+    window.__syncInteractiveRegions();
+    nativeTabIntent = event;
+    // Only this browser Tab default action may open a field; later programmatic focus may not.
+    nativeTabReset = setTimeout(clearNativeTabIntent, 0);
+  }, true);
+  document.addEventListener('focus', event => {
+    if (!event.target?.matches?.('input.ck-bind')) clearNativeTabIntent();
+  }, true);
+  document.addEventListener('keyup', event => { if (event.key === 'Tab') clearNativeTabIntent(); }, true);
+  document.addEventListener('pointerdown', clearNativeTabIntent, true);
+  window.addEventListener('blur', clearNativeTabIntent);
+  document.addEventListener('visibilitychange', clearNativeTabIntent);
   let pendingUnlockOpen = null;
   let unlockIntent = 0;
   function cancelPendingUnlockOpen(){
@@ -6360,10 +6810,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const rect = box.getBoundingClientRect();
     const label = input.closest('.dash-cell')?.querySelector('.dash-label');
     const row = input.closest('.loan-input-row');
+    const costRow = input.closest('#tabPanels .input-table tr, #pTabPanels .input-table tr');
     const labelRect = label?.getBoundingClientRect();
     const rowRect = row?.getBoundingClientRect();
-    const top = Math.min(rect.top, labelRect?.top ?? rect.top);
-    const bottom = Math.max(rect.bottom, rowRect?.bottom ?? rect.bottom);
+    const costRect = costRow?.getBoundingClientRect();
+    const top = Math.min(rect.top, labelRect?.top ?? rect.top, costRect?.top ?? rect.top);
+    const bottom = Math.max(rect.bottom, rowRect?.bottom ?? rect.bottom, costRect?.bottom ?? rect.bottom);
     return {top, bottom, height:bottom-top};
   }
   function stopFieldVisibility(){
@@ -6436,8 +6888,65 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // 留白與必要的頁面回位跟隨鍵盤實際的 CSS 動畫進度，不在收完後才跳回。
   let kbCloseFrame = null;
   let kbCloseGeneration = 0;
+  let kbClosePending = null, kbCloseResumeTimer = null, kbCloseResumeFrame = null;
+  const kbHeldNavPointers = new Map();
+  function hasHeldCalcNav(){
+    return Array.from(kbHeldNavPointers.values()).some(el =>
+      el.isConnected && el.getClientRects().length && !el.disabled && !el.closest('[inert]'));
+  }
+  function flushHeldKbClose(){
+    kbCloseResumeTimer = kbCloseResumeFrame = null;
+    if (!kbClosePending || hasHeldCalcNav()) return;
+    const resume = kbClosePending;
+    kbClosePending = null;
+    resume();
+  }
+  function resumeHeldKbClose(sequenceEnded=false){
+    if (!kbClosePending || hasHeldCalcNav() || kbCloseResumeTimer !== null) return;
+    if (sequenceEnded) {
+      if (kbCloseResumeFrame !== null) cancelAnimationFrame(kbCloseResumeFrame);
+      kbCloseResumeFrame = null;
+      // 原生 click 已送達後才改留白，不補造導航 click。
+      kbCloseResumeTimer = setTimeout(flushHeldKbClose, 0);
+    } else if (kbCloseResumeFrame === null) {
+      // 觸控的相容滑鼠事件可晚於 pointerup；也處理瀏覽器沒有產生 click 的結束。
+      kbCloseResumeFrame = requestAnimationFrame(() => {
+        kbCloseResumeFrame = requestAnimationFrame(flushHeldKbClose);
+      });
+    }
+  }
+  window.addEventListener('pointerdown', event => {
+    kbHeldNavPointers.delete(event.pointerId);
+    if (event.isPrimary && event.button === 0 && event.target instanceof Element) {
+      const nav = event.target.closest(CALC_NAV_SELECTOR);
+      if (nav) kbHeldNavPointers.set(event.pointerId, nav);
+    }
+    // 新按壓也能結束瀏覽器未送回舊放開事件的留白，不能殘留到下一次操作。
+    resumeHeldKbClose();
+  }, true);
+  function finishHeldCalcNav(event){
+    if (kbHeldNavPointers.delete(event.pointerId)) resumeHeldKbClose(event.type === 'pointercancel');
+  }
+  window.addEventListener('pointerup', finishHeldCalcNav, true);
+  window.addEventListener('pointercancel', finishHeldCalcNav, true);
+  window.addEventListener('click', () => resumeHeldKbClose(true), true);
+  window.addEventListener('pointermove', event => {
+    if (event.pointerType === 'mouse' && !(event.buttons & 1)) finishHeldCalcNav(event);
+  }, true);
+  function cancelHeldCalcNav(){
+    kbHeldNavPointers.clear();
+    resumeHeldKbClose(true);
+  }
+  window.addEventListener('blur', cancelHeldCalcNav);
+  window.addEventListener('resize', cancelHeldCalcNav);
+  window.addEventListener('pagehide', cancelHeldCalcNav);
+  window.visualViewport?.addEventListener('resize', cancelHeldCalcNav);
+  document.addEventListener('visibilitychange', cancelHeldCalcNav);
   function cancelKbCloseMotion(){
     ++kbCloseGeneration;
+    clearTimeout(kbCloseResumeTimer);
+    if (kbCloseResumeFrame !== null) cancelAnimationFrame(kbCloseResumeFrame);
+    kbCloseResumeTimer = kbCloseResumeFrame = kbClosePending = null;
     if (kbCloseFrame !== null) cancelAnimationFrame(kbCloseFrame);
     kbCloseFrame = null;
     stickyHeader.style.removeProperty("transform");
@@ -6447,6 +6956,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     cancelKbCloseMotion();
     const generation = kbCloseGeneration;
     const lastInput = targetInput && (document.getElementById(targetInput.id) || targetInput);
+    let heldViewport = null;
+    function closePageMotion(){
+    if (generation !== kbCloseGeneration) return;
+    const allowFieldReturn = !heldViewport || (window.innerWidth === heldViewport.width
+      && window.innerHeight === heldViewport.height && Math.abs(window.scrollY-heldViewport.scrollY) <= 2);
     const lastBounds = lastInput && lastInput.isConnected && lastInput.getClientRects().length ? fieldBounds(lastInput) : null;
     const headerWasFlow = document.body.classList.contains('calc-header-flow');
     const headerTop = stickyHeader.getBoundingClientRect().top;
@@ -6457,7 +6971,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const headerShift = headerWasFlow && pinned ? Math.max(-restoredHeader.height, Math.min(0, headerTop-restoredHeader.top)) / headerScale : 0;
     // 頁首和頁面回位沿用同一動畫進度，結束後不再補一次捲動。
     const finalHeaderBottom = Math.max(restoredHeader.bottom, (window.visualViewport?.offsetTop || 0)+restoredHeader.height);
-    const fieldEndY = headerWasFlow && pinned && lastBounds
+    const fieldEndY = allowFieldReturn && headerWasFlow && pinned && lastBounds
       ? Math.max(0, window.scrollY + lastBounds.top - finalHeaderBottom - 12) : Infinity;
     if(headerShift) stickyHeader.style.transform = 'translateY('+headerShift+'px)';
     const height = kb.getBoundingClientRect().height;
@@ -6465,7 +6979,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const hiddenOffset = height * 1.1; // 與 CSS translateY(110%) 相同。
     const startPadding = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
     const viewportWidth = window.innerWidth, viewportHeight = window.innerHeight;
+    kb.inert = true;
     kb.classList.remove('show');
+    if (keyboardInstallBanner) keyboardInstallBanner.inert = keyboardBannerWasInert;
     if (!startPadding || hiddenOffset - startOffset < 0.5 ||
         window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       document.body.style.paddingBottom = '';
@@ -6473,7 +6989,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       if(window.scrollY > fieldEndY) window.scrollTo({left:window.scrollX,top:fieldEndY,behavior:'instant'});
       return;
     }
-    let startY = null, lastY = null, followScroll = true;
+    let startY = null, lastY = null, followScroll = allowFieldReturn;
     function frame(){
       if (generation !== kbCloseGeneration || kb.classList.contains('show')) return;
       const offset = kb.getBoundingClientRect().bottom - window.innerHeight;
@@ -6500,10 +7016,24 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       kbCloseFrame = finished ? null : requestAnimationFrame(frame);
     }
     kbCloseFrame = requestAnimationFrame(frame);
+    }
+    if (hasHeldCalcNav()) {
+      // 完成輸入可先收起鍵盤；原按壓還沒放開時，頁籤位置及頁首留在原處。
+      kb.inert = true;
+      kb.classList.remove('show');
+      if (keyboardInstallBanner) keyboardInstallBanner.inert = keyboardBannerWasInert;
+      heldViewport = {width:window.innerWidth, height:window.innerHeight, scrollY:window.scrollY};
+      kbClosePending = closePageMotion;
+      return;
+    }
+    closePageMotion();
   }
 
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
+    input.classList.remove('ck-completed-focus');
+    if (!kb.classList.contains('show')) negativeNoticeUI.clear();
+    clearNativeTabIntent();
     cancelPendingUnlockOpen();
     cancelKbCloseMotion();
     if (targetInput === input && kb.classList.contains('show')) return;
@@ -6539,6 +7069,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     const pctWrap = input.closest('.pg-pct-input');
     if (pctWrap) pctWrap.classList.add('ck-active');
     backdrop.classList.add('show');
+    if (keyboardInstallBanner && !kb.classList.contains('show')) {
+      keyboardBannerWasInert = keyboardInstallBanner.inert;
+      keyboardInstallBanner.inert = true;
+    }
+    kb.inert = false;
     kb.classList.add('show');
     // 頁面底部補上鍵盤高度的空白,讓最底部的欄位也有空間捲到鍵盤上方
     document.body.style.paddingBottom = ((kb.offsetHeight || 360) + 40) + 'px';
@@ -6610,12 +7145,17 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   let _kbTouchMoved = false;
   function resetKbGestureState(){
+    ++_kbEditEpoch;
+    _kbClearResidualClick();
     kb._ignoreClick = false;
     _kbTouchMoved = false;
     if (typeof _kbClearPtr === 'function') _kbClearPtr();
   }
 
-  function closeKb(){
+  function closeKb({restoreFocus=false}={}){
+    const noticeRevision = negativeNoticeUI.revision();
+    clearNativeTabIntent();
+    const focusId = targetInput?.id;
     cancelPendingUnlockOpen();
     if (commitToField() === false) return false;
     clearCkActive();
@@ -6627,10 +7167,15 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     // 收起後立刻清手勢旗標,避免接下來點欄位被當成「要忽略的 click」
     resetKbGestureState();
+    negativeNoticeUI.closed(noticeRevision, true);
+    if (restoreFocus) restoreKbFieldFocus(focusId, true);
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
-  function cancelKb(){
+  function cancelKb({restoreFocus=false}={}){
+    negativeNoticeUI.clear();
+    clearNativeTabIntent();
+    const focusId = targetInput?.id;
     cancelPendingUnlockOpen();
     if (!kb.classList.contains('show')) return;
     clearInputError();
@@ -6653,6 +7198,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     expr = '';
     touched = false;
     resetKbGestureState();
+    if (restoreFocus) restoreKbFieldFocus(focusId, true);
   }
 
   window.__cancelCalcKbDraft = function(){
@@ -6669,19 +7215,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn';
   document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest(CALC_NAV_SELECTOR)) return;
+    negativeNoticeUI.clear();
     if (!kb.classList.contains('show') && pendingUnlockOpen === null) return;
     if (window.__commitCalcKbDraft() === false) {
       event.preventDefault();
       event.stopImmediatePropagation();
+    } else {
+      negativeNoticeUI.clear();
     }
   }, true);
 
   // 按鍵處理
   function pressKey(k){
+    if (!kb.classList.contains('show')) return;
     if (k === '' || k == null) return;
     cancelPendingUnlockOpen();
     if (k === 'swap'){ toggleOps(); return; }   // 運算鍵左右切換(不算編輯內容)
-    if (k === 'done'){ closeKb(); return; }      // 完成(不算編輯內容)
+    if (k === 'done'){ closeKb({restoreFocus:true}); return; }      // 完成(不算編輯內容)
     clearInputError();
     if (targetInput && targetInput.id === 'pt_loan_rate') window.__clearLoanInputWarning();
     touched = true;   // 以下任一鍵都代表使用者實際編輯(含 C / 退格 清空)
@@ -6711,6 +7261,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   function toggleOps(){
     const keys = document.getElementById('calcKbKeys');
     if (!keys) return;
+    // Reordering keys cancels unfinished presses; releasing an old position is not a new key.
+    cancelHeldKbPresses();
     const nowLeft = keys.classList.toggle('ops-left');
     try { localStorage.setItem('fwTax_kbOpsLeft', nowLeft ? '1' : '0'); } catch(e){}
   }
@@ -6746,6 +7298,68 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kbKeysEl.querySelectorAll('.ck-pressed').forEach(b => b.classList.remove('ck-pressed'));
   };
   let _kbPtr = null; // { id, x0, y0, btn, moved, timer }
+  // Completed touch taps are activated at pointerup; their optional click is a duplicate.
+  const _kbTouchClicks = new Map();
+  let _kbLegacyTouchClick = null;
+  const _kbKeyPresses = new Map();
+  let _kbLegacyKeyRelease = null;
+  function staleKbPress(press){
+    return press.cancelled || press.epoch !== _kbEditEpoch ||
+      press.input !== targetInput || !press.input?.isConnected || !press.btn?.isConnected ||
+      press.key !== (press.btn.classList.contains('ck-done') ? 'done' : press.btn.dataset.k);
+  }
+  document.addEventListener('pointerdown', e => {
+    _kbTouchClicks.delete(e.pointerId);
+    _kbLegacyTouchClick = null;
+    // 新按壓可立即使用同一 pointerId；舊按壓只阻擋自身的後續 click。
+    _kbKeyPresses.delete(e.pointerId);
+    _kbLegacyKeyRelease = null;
+  }, true);
+  function rememberKeyRelease(e){
+    const press = _kbKeyPresses.get(e.pointerId);
+    if (!press) return;
+    press.released = true;
+    if (e.type === 'pointercancel') press.cancelled = true;
+    _kbLegacyKeyRelease = press;
+  }
+  window.addEventListener('pointerup', rememberKeyRelease, true);
+  window.addEventListener('pointercancel', rememberKeyRelease, true);
+  function cancelHeldKbPresses(){
+    _kbKeyPresses.forEach(press => { press.cancelled = true; });
+    _kbClearPtr();
+    clearPressed();
+  }
+  window.addEventListener('blur', cancelHeldKbPresses);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') cancelHeldKbPresses();
+  });
+  window.addEventListener('click', e => {
+    // Trusted touch clicks may have detail=0. Match pointer identity before classifying keyboard activation.
+    const press = typeof e.pointerId === 'number' && e.pointerId >= 0
+      ? _kbKeyPresses.get(e.pointerId)
+      : e.detail > 0 && !e.pointerType ? _kbLegacyKeyRelease : null;
+    const stale = press && (staleKbPress(press) || !press.btn.contains(e.target));
+    if (press) {
+      _kbKeyPresses.delete(press.id);
+      if (_kbLegacyKeyRelease === press) _kbLegacyKeyRelease = null;
+    }
+    const handled = e.pointerType === 'touch' ? _kbTouchClicks.get(e.pointerId)
+      : !e.pointerType && e.detail > 0 && _kbLegacyTouchClick?.btn.contains(e.target)
+        ? _kbLegacyTouchClick : null;
+    if (handled) {
+      _kbTouchClicks.delete(handled.id);
+      if (_kbLegacyTouchClick === handled) _kbLegacyTouchClick = null;
+    }
+    if (!stale && !handled) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  }, true);
+  function rememberTouchClick(e, btn){
+    const handled = {id: e.pointerId, btn};
+    _kbTouchClicks.set(e.pointerId, handled);
+    _kbLegacyTouchClick = handled;
+    if (_kbTouchClicks.size > 16) _kbTouchClicks.delete(_kbTouchClicks.keys().next().value);
+  }
   const KB_MOVE_TH = 10;   // 超過此移動 → 不當點擊
   const KB_SWIPE_TH = 50;  // 超過此位移 → 收起鍵盤
   const KB_PRESS_DELAY = 70;
@@ -6763,7 +7377,23 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   kb.addEventListener('pointerdown', (e) => {
     if (!kb.classList.contains('show')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Keep compatibility mousedown from focusing page controls after touch Done closes the keyboard.
+    if (e.pointerType === 'touch' && e.cancelable) e.preventDefault();
     const btn = e.target.closest ? e.target.closest('.ck-key, .ck-done') : null;
+    if (btn) {
+      _kbKeyPresses.set(e.pointerId, {
+        id:e.pointerId, input:targetInput, epoch:_kbEditEpoch, btn,
+        key:btn.classList.contains('ck-done') ? 'done' : btn.dataset.k,
+        cancelled:false, released:false
+      });
+      // Keep active fingers identifiable even if another pointer produces many later presses.
+      if (_kbKeyPresses.size > 32) {
+        for (const [id, oldPress] of _kbKeyPresses) {
+          if (oldPress.released) _kbKeyPresses.delete(id);
+          if (_kbKeyPresses.size <= 32) break;
+        }
+      }
+    }
     _kbClearPtr();
     kb._ignoreClick = false;
     _kbPtr = {
@@ -6791,19 +7421,38 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       clearPressed(); // 滑動中絕不顯示按鍵壓下
     }
   });
+  let _kbResidualClickCleanup = null;
+  function _kbClearResidualClick(){
+    if (_kbResidualClickCleanup) _kbResidualClickCleanup();
+  }
   function _eatOneDocumentClick(ms){
-    // 只吃「點在鍵盤上」的殘留 click;點輸入欄要放行(否則收起後快速點欄會沒反應)
-    const eat = (ev) => {
+    // 保護只屬於剛結束的滑動；新的 pointerdown／開欄不能沿用舊 click 攔截。
+    _kbClearResidualClick();
+    let timer = null;
+    const cleanup = () => {
       document.removeEventListener('click', eat, true);
+      document.removeEventListener('pointerdown', cleanup, true);
+      clearTimeout(timer);
+      if (_kbResidualClickCleanup === cleanup) _kbResidualClickCleanup = null;
+    };
+    const eat = (ev) => {
+      cleanup();
       if (kb.contains(ev.target)) {
         ev.preventDefault();
         ev.stopPropagation();
       }
     };
+    _kbResidualClickCleanup = cleanup;
     document.addEventListener('click', eat, true);
-    setTimeout(() => document.removeEventListener('click', eat, true), ms || 450);
+    document.addEventListener('pointerdown', cleanup, {capture:true, passive:true});
+    timer = setTimeout(cleanup, ms || 450);
   }
   function _kbFinishPtr(e, cancelled){
+    const press = _kbKeyPresses.get(e.pointerId);
+    if (press && staleKbPress(press)) {
+      if (_kbPtr?.id === e.pointerId) { _kbClearPtr(); clearPressed(); }
+      return;
+    }
     if (!_kbPtr || e.pointerId !== _kbPtr.id) return;
     if (_kbPtr.timer) { clearTimeout(_kbPtr.timer); _kbPtr.timer = null; }
     const dx = e.clientX - _kbPtr.x0;
@@ -6830,6 +7479,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       kb._ignoreClick = true;
       _kbClearPtr();
       setTimeout(() => { kb._ignoreClick = false; }, 450);
+      return;
+    }
+    if (wasTap && btn && e.pointerType === 'touch' && e.isPrimary) {
+      // Do not depend on a synthesized click after a rejected closing swipe.
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      _kbClearPtr();
+      if (hit && btn.contains(hit)) {
+        _kbArmPress(btn);
+        setTimeout(clearPressed, 90);
+        pressKey(btn.classList.contains('ck-done') ? 'done' : btn.dataset.k);
+      }
+      rememberTouchClick(e, btn);
       return;
     }
     if (wasTap && btn) {
@@ -6926,7 +7587,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     e.preventDefault();
     e.stopPropagation();
     if (mapped.action === 'cancel') {
-      cancelKb();
+      cancelKb({restoreFocus:true});
       return;
     }
     // 長按重複輸入(數字/退格)允許;首次才閃燈,避免狂閃
@@ -7028,7 +7689,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 
   // 判斷某欄位是否能開鍵盤
   function canOpenKb(el){
-    if (!el) return false;
+    if (!el || el.disabled || el.closest('[inert]')) return false;
     if (DISPLAY_ONLY.has(el.id)) return false;     // 純顯示欄位
     if (el.classList.contains('is-locked')) return false;  // 鎖定中
     if (!isFieldVisibleForKb(el)) return false;
@@ -7077,13 +7738,14 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       el.setAttribute('readonly', '');
     }
     el.style.cursor = 'pointer';
-    // 軟體鍵盤開啟時,不要被原生 focus/Tab 搶焦點(改由 switchKbField 處理)
+    el.addEventListener('blur', () => el.classList.remove('ck-completed-focus'));
+    // A native Tab may enter editing synchronously. Restoring focus never starts a draft.
     el.addEventListener('focus', e => {
-      if (kb.classList.contains('show')) {
-        e.target.blur();
-        return;
-      }
+      const fromTab = nativeTabIntent && !nativeTabIntent.defaultPrevented;
+      clearNativeTabIntent();
+      if (suppressFieldFocus) return;
       e.target.blur();
+      if (fromTab && !kb.classList.contains('show') && canOpenKb(el)) tryOpenField();
     });
     // 用 pointerup 開鍵盤:收起後若殘留 click 被吃掉,快速點欄位仍有反應
     let fieldPtr = null;
@@ -7136,6 +7798,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const el = document.getElementById(id);
       if (el && el.dataset.ckBound !== '1') bindFieldForKb(el);
     });
+    window.__syncInteractiveRegions();
   }
   scanDynamicFields();  // 初始掃一次
   // 監聽 body 整體 DOM 變化(仲介卡 innerHTML 重寫會觸發)
@@ -7295,6 +7958,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   });
   document.querySelectorAll('.tab-btn[data-tab], .tab-btn[data-ptab]').forEach(function(b){ b.classList.remove('active'); });
   ['flowSection','partySection'].forEach(function(id){ var s=document.getElementById(id); if(s) s.classList.remove('open'); });
+  window.__syncInteractiveRegions();
 })();
 
 
