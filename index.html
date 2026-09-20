@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.20D-restore19e-display">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20D-restore19e-display">
+<link rel="manifest" href="manifest.json?v=2026.09.20E-input-motion">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20E-input-motion">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20D-restore19e-display">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20E-input-motion">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -2473,6 +2473,7 @@
     pointer-events: none;
   }
   .calc-kb.show {
+    transition: none;
     transform: translateX(-50%) translateY(0);
     pointer-events: auto;
   }
@@ -3544,7 +3545,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.20D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.20E</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -7072,7 +7073,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     kbHeldNavPointers.delete(event.pointerId);
     if (event.isPrimary && event.button === 0 && event.target instanceof Element) {
       const nav = event.target.closest(CALC_NAV_SELECTOR);
-      if (nav) kbHeldNavPointers.set(event.pointerId, nav);
+      const field = event.target.closest('input[data-ck-bound="1"]');
+      const held = nav || (field && canOpenKb(field) ? field : null);
+      if (held) kbHeldNavPointers.set(event.pointerId, held);
     }
     // 新按壓也能結束瀏覽器未送回舊放開事件的留白，不能殘留到下一次操作。
     resumeHeldKbClose();
@@ -7145,6 +7148,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     let startY = null, lastY = null, followScroll = allowFieldReturn;
     function frame(){
       if (generation !== kbCloseGeneration || kb.classList.contains('show')) return;
+      // Keep an already-hit navigation/input target still until its native release/click.
+      if (hasHeldCalcNav()) {
+        kbCloseFrame = null;
+        kbClosePending = frame;
+        return;
+      }
       const offset = kb.getBoundingClientRect().bottom - window.innerHeight;
       let progress = Math.max(0, Math.min(1, (offset - startOffset) / (hiddenOffset - startOffset)));
       if (window.innerWidth !== viewportWidth || window.innerHeight !== viewportHeight) {
