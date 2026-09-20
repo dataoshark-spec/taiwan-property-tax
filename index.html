@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.20H-input-textnode">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20H-input-textnode">
+<link rel="manifest" href="manifest.json?v=2026.09.20G-fixed-notice">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20G-fixed-notice">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20H-input-textnode">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20G-fixed-notice">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3507,7 +3507,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.20H</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.20G</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -4103,13 +4103,7 @@ function autoFitDashNumbers(onlyInput = null) {
     mirror.style.fontWeight = cs.fontWeight;
     mirror.style.fontStyle = cs.fontStyle;
     mirror.style.letterSpacing = cs.letterSpacing;
-    // 重用現有量測文字，避免每個字都重建節點；其他內容仍沿用原本替換方式。
-    const measureText = mirror.firstChild;
-    if (mirror.childNodes.length === 1 && measureText.nodeType === Node.TEXT_NODE) {
-      measureText.data = text;
-    } else {
-      mirror.textContent = text;
-    }
+    mirror.textContent = text;
 
     // element 內可放數字的寬度 = clientWidth - 左右 padding - suffix 預留(20px)
     const padL = parseFloat(cs.paddingLeft) || 0;
