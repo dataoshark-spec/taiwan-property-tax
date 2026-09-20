@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.20E-input-motion">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20E-input-motion">
+<link rel="manifest" href="manifest.json?v=2026.09.20G-fixed-notice">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20G-fixed-notice">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20E-input-motion">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20G-fixed-notice">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -437,47 +437,33 @@
     25% { transform: translateX(-2px); }
     75% { transform: translateX(2px); }
   }
-  /* 不可輸入負數 提示 toast */
+  /* 固定於展開鍵盤上方的懸浮提示，開關鍵盤不切換位置。 */
   .neg-toast {
     position: fixed;
     left: 50%;
-    bottom: 84px;
-    transform: translateX(-50%) translateY(10px);
+    top: 8px;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    min-height: 36px;
+    box-sizing: border-box;
     background: #C44E4E;
     color: #FFFFFF;
     font-size: 13px;
     font-weight: 600;
-    padding: 9px 20px;
+    line-height: 20px;
+    padding: 8px 20px;
     border-radius: 22px;
     box-shadow: 0 3px 12px rgba(0,0,0,0.22);
+    white-space: nowrap;
+    text-align: center;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease;
     z-index: 9999;
   }
-  .neg-toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-  /* Page-only negative feedback reserves its own row after the source group. */
-  .neg-notice-space { box-sizing: border-box; margin: 8px 0; min-width: 0; }
-  .neg-toast.neg-toast-inline {
-    position: static; inset: auto; transform: none;
-    width: max-content; max-width: min(100%, 50vw) !important;
-    box-sizing: border-box; margin: 0 auto; text-align: center;
-  }
-  .input-table tr.neg-notice-space { display: table-row; margin: 0; }
-  .input-table tr.neg-notice-space > td {
-    display: table-cell; width: auto; padding: 8px 0;
-    border: 0; border-radius: 0; background: transparent;
-  }
-  @media (max-width: 420px) {
-    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space { display: block; margin: 0 0 8px; }
-    :is(#tabPanels, #pTabPanels) .input-table tr.neg-notice-space > td {
-      display: block; width: 100%; padding: 0;
-      border: 0; border-radius: 0; background: transparent;
-    }
-  }
+  .neg-toast.show { opacity: 1; visibility: visible; }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
   .presale-dash #p_target:focus:not(.ck-completed-focus) { background: #F0F6FC !important; }
@@ -2485,30 +2471,6 @@
     width: 38px; height: 4px; border-radius: 2px;
     background: #C8C7C0; margin: 2px auto 8px;
   }
-  /* 固定訊息列：顯示／清除提示不改變按鍵座標。 */
-  .calc-kb-notice {
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 24px;
-    min-height: 24px;
-    max-height: 24px;
-    margin: 0 0 6px;
-    padding: 0 4px;
-    color: #B02E2E;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 20px;
-    text-align: center;
-    white-space: nowrap;
-    visibility: hidden;
-    pointer-events: none;
-    user-select: none;
-  }
-  .calc-kb-notice.show { visibility: visible; }
-
   /* 數字鍵盤作用中的欄位:模擬瀏覽器原生 :focus 樣式(因為我們把欄位 blur 掉,
      原生 focus 觸發不到 → 用 ck-active class 手動套上一樣的 background + box-shadow) */
   /* 計算機編輯中的欄位:明顯高亮,方便 Tab 切換時辨識 */
@@ -3545,18 +3507,18 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.20E</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.20G</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
 
 <div class="toast" id="toast">已清空,可以開始輸入</div>
+<div class="neg-toast" id="negToast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">不可輸入負數</div>
 
 <!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
 <div class="calc-kb-backdrop" id="calcKbBackdrop"></div>
 <div class="calc-kb" id="calcKb" inert>
   <div class="calc-kb-grip"></div>
-  <div class="calc-kb-notice" id="calcKbNotice" role="status" aria-live="polite" aria-atomic="true"></div>
   <div class="calc-kb-keys" id="calcKbKeys">
     <button type="button" class="ck-key ck-fn ck-c"   data-k="C">C</button>
     <button type="button" class="ck-key ck-fn ck-bk"  data-k="back">⌫</button>
@@ -5056,133 +5018,51 @@ document.addEventListener('input', (e) => {
 // === 禁止輸入負數(屋主目標稅後利潤 d_target / p_target 除外)===
 // 提示只保存暫時 UI 狀態，不參與欄位提交或保存資料。
 const negativeNoticeUI = (() => {
-  let revision = 0, message = null, timer = null, positionFrame = null;
-  let pageSpace = null, pagePointerRevision = 0;
-  const pagePointers = new Map(), heldPageSpaces = new Set();
-  function releasePageSpace(){
-    const space = pageSpace;
-    pageSpace = null;
-    if (space && pagePointers.size) {
-      // The notice still expires on time; its row cannot move under a held pointer.
-      if (!heldPageSpaces.has(space)) space.style.height = space.offsetHeight + 'px';
-      heldPageSpaces.add(space);
-      return;
-    }
-    if (space) space.remove();
-    heldPageSpaces.delete(space);
-  }
-  function releaseHeldPageSpaces(){
-    if (pagePointers.size) return;
-    for (const space of heldPageSpaces) {
-      space.remove();
-      if (pageSpace === space) pageSpace = null;
-    }
-    heldPageSpaces.clear();
-  }
-  document.addEventListener('pointerdown', e => {
-    // A notice can be created by Enter while another pointer is already held.
-    pagePointers.set(e.pointerId, {serial: ++pagePointerRevision, target: e.target, id: e.target.id});
-  }, true);
-  function finishPagePointer(e){
-    if (!pagePointers.has(e.pointerId)) return;
-    const pointerRevision = pagePointers.get(e.pointerId);
-    // Compatibility mouseup/click must finish against the original layout first.
-    setTimeout(() => {
-      if (pagePointers.get(e.pointerId) === pointerRevision) pagePointers.delete(e.pointerId);
-      releaseHeldPageSpaces();
-      if (!pagePointers.size) schedulePosition();
-    }, 0);
-  }
-  document.addEventListener('pointerup', finishPagePointer, true);
-  document.addEventListener('pointercancel', finishPagePointer, true);
-  window.addEventListener('blur', () => { pagePointers.clear(); releaseHeldPageSpaces(); schedulePosition(); });
+  const toast = document.getElementById('negToast');
+  const keyboard = document.getElementById('calcKb');
   const mode = () => document.body.classList.contains('is-preview') ? 'preview' : 'ready';
-  const strip = () => document.getElementById('calcKbNotice');
+  let revision = 0, message = null, timer = null;
+  function clearance(){
+    // Reserve the same visible space before and during a notice; no late scroll.
+    return Math.ceil(toast.getBoundingClientRect().height) + 16;
+  }
+  function layout(){
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop || 0;
+    const safeInset = parseFloat(getComputedStyle(document.body, '::before').height) || 0;
+    const visibleTop = viewportTop + safeInset;
+    const visibleBottom = viewportTop + (viewport?.height || window.innerHeight);
+    // Height stays stable when the panel's closing transform changes.
+    const top = visibleBottom - keyboard.getBoundingClientRect().height - 8 - toast.getBoundingClientRect().height;
+    toast.style.top = Math.max(visibleTop + 4, top) + 'px';
+  }
   function clear(){
-    if (pageSpace && pagePointers.size) releasePageSpace();
     clearTimeout(timer); timer = null; message = null;
-    if (positionFrame !== null) cancelAnimationFrame(positionFrame);
-    positionFrame = null;
-    [strip(), document.getElementById('negToast')].forEach(el => {
-      if (!el) return;
-      el.classList.remove('show'); el.textContent = '';
-      delete el.dataset.sourceField; delete el.dataset.sourceMode;
-    });
-    releasePageSpace();
-  }
-  function positionPageNotice(){
-    positionFrame = null;
-    const toast = document.getElementById('negToast');
-    if (!message || !toast?.classList.contains('show')) return;
-    const source = document.getElementById(message.field);
-    let anchor = source?.closest('.dash-row, .dash-fee, .input-table tr, .pg-row') || source?.parentElement;
-    if (!anchor?.parentElement) return;
-    // Insert after held targets as well as the source, so adding a notice cannot
-    // move an unfinished click. Its normal source position is restored after click.
-    for (const pointer of pagePointers.values()) {
-      const target = pointer.target?.isConnected ? pointer.target : document.getElementById(pointer.id);
-      if (!target?.getClientRects().length || target.closest('#calcKb, .neg-notice-space')) continue;
-      const heldAnchor = target.closest('.dash-row, .dash-fee, .input-table tr, .pg-row, .tabs-wrap, .party-tabs, .collapse-section-header, .sticky-top');
-      if (heldAnchor && anchor !== heldAnchor && !heldAnchor.contains(anchor) && !anchor.contains(heldAnchor) &&
-          (anchor.compareDocumentPosition(heldAnchor) & Node.DOCUMENT_POSITION_FOLLOWING)) anchor = heldAnchor;
-    }
-    // Following content gets actual layout space, never an overlay over labels.
-    if (!pageSpace || pageSpace.previousElementSibling !== anchor) {
-      releasePageSpace();
-      const tableRow = anchor.tagName === 'TR';
-      pageSpace = document.createElement(tableRow ? 'tr' : 'div');
-      pageSpace.className = 'neg-notice-space';
-      let holder = pageSpace;
-      if (tableRow) {
-        holder = document.createElement('td'); holder.colSpan = 2;
-        pageSpace.appendChild(holder);
-      }
-      toast.classList.add('neg-toast-inline');
-      toast.style.removeProperty('top'); toast.style.removeProperty('bottom');
-      holder.appendChild(toast);
-      anchor.after(pageSpace);
-    }
-  }
-  function schedulePosition(){
-    if (message && positionFrame === null) positionFrame = requestAnimationFrame(positionPageNotice);
+    toast.classList.remove('show');
+    toast.setAttribute('aria-hidden', 'true');
+    delete toast.dataset.sourceField; delete toast.dataset.sourceMode;
   }
   function render(){
     if (!message || message.mode !== mode() || performance.now() >= message.until || document.getElementById('rateSheet')?.classList.contains('show')) { clear(); return; }
-    const inKeyboard = document.getElementById('calcKb')?.classList.contains('show');
-    let toast = document.getElementById('negToast');
-    if (!inKeyboard && !toast) {
-      toast = document.createElement('div'); toast.id = 'negToast'; toast.className = 'neg-toast';
-      toast.setAttribute('role', 'status'); toast.setAttribute('aria-live', 'polite');
-      toast.style.maxWidth = 'calc(100vw - 24px)'; toast.style.boxSizing = 'border-box';
-      document.body.appendChild(toast);
-    }
-    [strip(), toast].forEach(el => {
-      if (!el) return;
-      const active = inKeyboard ? el === strip() : el === toast;
-      el.classList.toggle('show', active); el.textContent = active ? message.text : '';
-      if (active) { el.dataset.sourceField = message.field; el.dataset.sourceMode = message.mode; }
-    });
-    if (!inKeyboard) positionPageNotice();
-    else releasePageSpace();
+    layout();
+    toast.dataset.sourceField = message.field; toast.dataset.sourceMode = message.mode;
+    toast.setAttribute('aria-hidden', 'false');
+    toast.classList.add('show');
   }
   function show(el){
-    const label = (el.closest('.dash-cell')?.querySelector('.dash-label')?.textContent || el.closest('.input-table tr')?.querySelector('td')?.textContent || '').replace(/\s+/g, '').trim();
-    const shortLabel = label.length > 8 ? label.slice(0, 8) + '…' : label;
-    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now()+1400, text: (shortLabel ? shortLabel+'：' : '')+'不可輸入負數'};
+    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now() + 2000};
     const serial = message.serial;
     clearTimeout(timer);
-    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, 1400);
+    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, 2000);
     render();
   }
-  function closed(previous, allowCurrent){
-    if (allowCurrent && message && message.serial > previous) render();
-    else clear();
-  }
-  window.addEventListener('scroll', schedulePosition, {passive:true});
-  window.addEventListener('resize', schedulePosition, {passive:true});
-  window.visualViewport?.addEventListener('resize', schedulePosition, {passive:true});
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { pagePointers.clear(); clear(); releaseHeldPageSpaces(); } });
-  return {show, clear, closed, revision: () => revision};
+  function closed(){ render(); }
+  window.addEventListener('resize', layout, {passive:true});
+  window.visualViewport?.addEventListener('resize', layout, {passive:true});
+  window.visualViewport?.addEventListener('scroll', layout, {passive:true});
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') clear(); });
+  layout();
+  return {show, clear, closed, layout, clearance, revision: () => revision};
 })();
 function showNegativeInputWarning(el) {
   el.classList.add('neg-blocked');
@@ -7007,23 +6887,25 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const rowHeight = parseFloat(gridStyle.gridAutoRows) || 56;
       const currentGap = parseFloat(gridStyle.rowGap) || 8;
       const chromeHeight = kb.getBoundingClientRect().height-rowHeight*6-currentGap*5;
-      const maxKeyboardHeight = visibleBottom-visibleTop-bounds.height-36;
+      const noticeGap = negativeNoticeUI.clearance();
+      const maxKeyboardHeight = visibleBottom-visibleTop-bounds.height-12-noticeGap;
       const gap = maxKeyboardHeight < chromeHeight+44*6+8*5 ? 4 : 8;
       const row = Math.min(56,Math.max(28,Math.floor((maxKeyboardHeight-chromeHeight-gap*5)/6)));
       kb.style.setProperty('--calc-row-height',row+'px');
       kb.style.setProperty('--calc-key-gap',gap+'px');
       const keyboard = kb.getBoundingClientRect();
+      negativeNoticeUI.layout();
       // 展開途中先用面板的最終位置，避免動畫過半後又捲一次。
       const transformY = new DOMMatrixReadOnly(getComputedStyle(kb).transform).m42;
       const keyboardTop = Math.min(visibleBottom, keyboard.top-transformY);
       document.body.style.paddingBottom = (keyboard.height+40)+'px';
       const headerHeight = stickyHeader.getBoundingClientRect().height;
       const naturallyPinned = !document.body.classList.contains('is-app-scaled-transform');
-      const needFlow = naturallyPinned && keyboardTop-visibleTop-headerHeight-36 < bounds.height;
+      const needFlow = naturallyPinned && keyboardTop-visibleTop-headerHeight-12-noticeGap < bounds.height;
       document.body.classList.toggle('calc-header-flow', needFlow);
       const pinned = getComputedStyle(stickyHeader).position === 'sticky';
       const top = Math.max(visibleTop, pinned ? stickyHeader.getBoundingClientRect().bottom : visibleTop)+12;
-      const bottom = keyboardTop-24;
+      const bottom = keyboardTop-noticeGap;
       const current = fieldBounds(input);
       let delta = 0;
       if(current.bottom>bottom) delta = current.bottom-bottom;
@@ -7194,7 +7076,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   function openKb(input){
     if (!input || !canOpenKb(input)) return;
     input.classList.remove('ck-completed-focus');
-    if (!kb.classList.contains('show')) negativeNoticeUI.clear();
+    if (!kb.classList.contains('show')) negativeNoticeUI.closed();
     clearNativeTabIntent();
     cancelPendingUnlockOpen();
     cancelKbCloseMotion();
