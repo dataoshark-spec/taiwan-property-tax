@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.20B-cost-layout">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20B-cost-layout">
+<link rel="manifest" href="manifest.json?v=2026.09.20C-empty-dash">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.20C-empty-dash">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20B-cost-layout">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.20C-empty-dash">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -2814,6 +2814,40 @@
   }
 }
 
+/* 20C: presentation of missing-result dashes only; original text and boxes stay. */
+.empty-dash {
+  display: inline-block;
+  position: relative;
+  vertical-align: baseline;
+  font: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+  pointer-events: none;
+}
+.empty-dash > .empty-dash-glyph {
+  opacity: 0;
+}
+.empty-dash::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--empty-dash-offset, 0px));
+  width: calc(100% - 0.045em);
+  height: 0;
+  border-top: max(1px, 0.075em) solid currentColor;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.profit-banner-main-value > .empty-dash {
+  /* Existing label: 22px and margin-bottom:-0.2em. Its center is 2.2px lower.
+     Offset only the empty line; preserve the label and normal number layout. */
+  --empty-dash-offset: 2.2px;
+}
+.profit-banner-main-value > .empty-dash::after {
+  border-top-width: 0.1em;
+}
+
 </style>
 <style>
 /* Approved loan percentage feedback: three flashes and a same-row message. */
@@ -3544,7 +3578,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.20B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.20C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3885,6 +3919,36 @@ function updateRatePrompt(id, rateSelected) {
   if (typeof window.__fitDashLabels === 'function') window.__fitDashLabels();
 }
 
+// Display-only pass after existing renderers. It never reads or writes input values.
+function alignEmptyValueDashes() {
+  const selectors = [
+    '.safety-value > .__fit-num', '.dash-display', '.dash-subnote .v',
+    '.sum-display', '.profit-banner-value', '.profit-banner-main-value',
+    '#flowBody .flow-cell-v', '#partySection .pg-value',
+    '#partySection .pg-pct-text', '#partySection .pg-aside-value',
+    '#partySection .pg-final-value', '#partySection .pg-final-kpi'
+  ];
+  document.querySelectorAll(selectors.join(',')).forEach(host => {
+    const walker = document.createTreeWalker(host, NodeFilter.SHOW_TEXT);
+    const texts = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement.closest('.empty-dash')) continue;
+      const parts = /^(\s*)(—)(\s*(?:%|元|萬)?\s*)$/.exec(node.nodeValue);
+      if (parts) texts.push({node, parts});
+    }
+    texts.forEach(({node, parts}) => {
+      const marker = document.createElement('span');
+      marker.className = 'empty-dash';
+      const glyph = document.createElement('span');
+      glyph.className = 'empty-dash-glyph';
+      glyph.textContent = parts[2];
+      marker.appendChild(glyph);
+      node.replaceWith(document.createTextNode(parts[1]), marker, document.createTextNode(parts[3]));
+    });
+  });
+}
+
 function calc() {
   const sale = num('d_sale') * 10000;
   const buy = num('d_buy') * 10000;
@@ -4090,6 +4154,7 @@ function calc() {
   autoFitDashNumbers();
   // banner 三個數字自適應(上排小、下排大利潤)
   if (typeof autoFitBannerNumbers === 'function') autoFitBannerNumbers();
+  alignEmptyValueDashes();
 }
 
 // === 自動縮放控制台主數字 ===
@@ -6152,6 +6217,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     }
     // 預售切換、還原與計算完成後，同步依目前欄位內容更新字級。
     autoFitDashNumbers();
+    alignEmptyValueDashes();
   }
 
   // 綁定 input change
