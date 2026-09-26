@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.26B-four-decimals">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.26B-four-decimals">
+<link rel="manifest" href="manifest.json?v=2026.09.26C-profit-compact">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.26C-profit-compact">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.26B-four-decimals">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.26C-profit-compact">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3282,7 +3282,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
       <div class="dash-cell">
         <div class="dash-label"><span>屋主<span style="color:#C44E4E;">最終利潤</span></span></div>
         <div class="dash-input-wrap">
-          <div class="dash-display profit" id="d_profit">—</div>
+          <div class="dash-display profit" id="d_profit">0.00</div>
           <span class="dash-input-suffix">萬</span>
         </div>
         <div class="dash-subnote"><span class="k">出售可列舉</span><span class="v"><span id="d_sell_ded">—</span> 萬</span></div>
@@ -3517,7 +3517,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.26B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.26C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3940,7 +3940,7 @@ function calc() {
 
 
   // === Dashboard 摘要更新 ===
-  $('d_profit').textContent = fmtMoney(profit, 'wan');
+  $('d_profit').textContent = fmtMoney(profit, 'wan').replace(/(\.\d{2}\d*?)0+$/, '$1');
   $('d_profit').classList.toggle('neg', profit < 0);
 
   // === 防呆列更新 ===
