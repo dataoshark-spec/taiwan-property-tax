@@ -4,7 +4,9 @@
   const groups = {
     commission: { places: 2, label: '佣收', ids: ['s_total','s_limit','s_final','p_s_total','p_s_limit','p_s_final'] },
     percent: { places: 4, label: '下方百分比', ids: ['d_buyer_pct','p_buyer_pct','p_paid_pct','p_unpaid_pct'] },
-    wan: { places: 4, label: '下方萬元', ids: ['d_buyer_total','d_buy_taxfee','d_sell_ded','d_exempt','d_buyer_pct_amt','d_target_now','d_seller_amt','p_buyer_total','p_buy_taxfee','p_sell_ded','p_buyer_pct_amt','p_target_now','p_seller_amt'] }
+    wan: { places: 4, label: '下方萬元', ids: ['d_buyer_total','d_buy_taxfee','d_sell_ded','d_exempt','d_buyer_pct_amt','d_target_now','d_seller_amt','p_buyer_total','p_buy_taxfee','p_sell_ded','p_buyer_pct_amt','p_target_now','p_seller_amt'] },
+    flowPercent: { places: 2, label: '公式流程仲介費百分比', ids: ['flow_seller_pct','p_flow_seller_pct'] },
+    agentFinalPercent: { places: 2, label: '仲介明細最終服務費百分比', ids: ['pt_agent_kpi','p_pt_agent_kpi'] }
   };
   const prefix = 'fwTax_precision_v1:';
   const byId = new Map(), source = new Map(), targets = new Map();
@@ -58,6 +60,9 @@
     if (name === 'commission' && typeof window.__fitSafetyValues === 'function') {
       requestAnimationFrame(() => window.__fitSafetyValues());
     }
+    if (name === 'flowPercent' && typeof window.autoFitFlowNumbers === 'function') {
+      requestAnimationFrame(() => window.autoFitFlowNumbers());
+    }
   }
   function refresh() {
     reloadPreferences();
@@ -70,17 +75,24 @@
   function targetOf(node) {
     return node instanceof Element ? node.closest('[data-precision-group]') : null;
   }
-  function cycle(target) {
+  function cycle(target, restoreFocus = false) {
     if (!visible(target)) return;
+    // Draft completion can replace the clicked renderer output. Keep its logical
+    // identity, then resolve the live target and the newly formatted full source.
+    const name = target.dataset.precisionGroup;
+    const id = target.dataset.precisionTargetId;
+    if (!groups[name] || byId.get(id) !== name) return;
     // This is the app's existing completion path, including invalid draft guards.
     if (typeof window.__commitCalcKbDraft === 'function' && window.__commitCalcKbDraft() === false) return;
-    const name = target.dataset.precisionGroup;
-    if (!groups[name]) return;
+    refreshTargets();
+    const currentTarget = targets.get(id);
+    if (!visible(currentTarget)) return;
     const next = places[name] % 4 + 1;
     try { localStorage.setItem(prefix + name, String(next)); }
     catch (error) { if (onWriteError) onWriteError(prefix + name, error); return; }
     places[name] = next;
     repaint(name);
+    if (restoreFocus) currentTarget.focus({ preventScroll: true });
   }
 
   // Native clicks are the only pointer activation. Pointer tracking rejects drags,
@@ -150,7 +162,7 @@
     if (!started || !target || (event.key !== 'Enter' && event.key !== ' ')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (!event.repeat) cycle(target);
+    if (!event.repeat) cycle(target, true);
   }, true);
   window.addEventListener('storage', event => {
     try { if (event.storageArea !== localStorage) return; } catch (_) { return; }
@@ -164,21 +176,26 @@
   });
   window.addEventListener('pageshow', refresh);
   window.addEventListener('focus', refresh);
-  function start(options = {}) {
-    if (started) return;
-    onWriteError = options.onWriteError;
+  function refreshTargets() {
     for (const [id, name] of byId) {
       const node = document.getElementById(id);
-      if (!node) continue;
-      const target = node.closest(name === 'commission' ? '.safety-cell' : '.dash-subnote');
-      if (!target) continue;
+      const target = !node ? null : name === 'agentFinalPercent' ? node :
+        node.closest(name === 'commission' ? '.safety-cell' : name === 'flowPercent' ? '.flow-cell' : '.dash-subnote');
+      if (!target) { targets.delete(id); continue; }
       targets.set(id, target);
       target.dataset.precisionGroup = name;
+      target.dataset.precisionTargetId = id;
       target.setAttribute('role', 'button');
       target.tabIndex = 0;
     }
+    Object.keys(groups).forEach(describe);
+  }
+  function start(options = {}) {
+    if (started) return;
+    onWriteError = options.onWriteError;
+    refreshTargets();
     started = true;
     Object.keys(groups).forEach(repaint);
   }
-  window.FwPrecision = Object.freeze({ format, start });
+  window.FwPrecision = Object.freeze({ format, start, refreshTargets });
 })();

@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.27C-strict6">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27C-strict6">
+<link rel="manifest" href="manifest.json?v=2026.09.28A-view">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28A-view">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27C-strict6">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28A-view">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -2792,6 +2792,13 @@
 [data-precision-group] { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
 [data-precision-group]:focus-visible { outline: 2px solid #BBA56D; outline-offset: -2px; }
 [data-precision-group].precision-pressed { box-shadow: inset 0 0 0 999px rgba(127,127,127,.12); }
+/* The new result controls own their space; no invisible overlap with nearby inputs. */
+.flow-cell[data-precision-group="flowPercent"] { min-height: 44px; min-width: 44px !important; }
+.pg-final-kpi[data-precision-group="agentFinalPercent"] {
+  min-height: 44px; min-width: 64px; display: inline-flex; align-items: center; justify-content: center;
+}
+.pg-final-bar:has(.pg-final-kpi) { flex-wrap: wrap; gap: 8px 10px; }
+.pg-final-bar:has(.pg-final-kpi) .pg-final-label { min-width: 5.5em; }
 @media (hover: hover) and (pointer: fine) {
   [data-precision-group]:hover { box-shadow: inset 0 0 0 999px rgba(127,127,127,.08); }
 }
@@ -3525,7 +3532,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.27C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.28A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3606,8 +3613,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.27C-strict6"></script>
-<script src="./precision.js?v=2026.09.27C-strict6"></script>
+<script src="./storage.js?v=2026.09.28A-view"></script>
+<script src="./precision.js?v=2026.09.28A-view"></script>
+<script src="./view-state.js?v=2026.09.28A-view"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -4614,8 +4622,8 @@ function renderFlow(d) {
   const fmtN = fmt;
   const pct = fmtFlowPercent;
 
-  const cell = (label, value, cls = '') =>
-    `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v">${value}</div></div>`;
+  const cell = (label, value, cls = '', id = '') =>
+    `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v"${id ? ` id="${id}"` : ''}>${value}</div></div>`;
   const op = (sym) => `<div class="flow-op">${sym}</div>`;
   // 用於斷行尾或行首的「懸掛」運算子(視覺上提示這列尚未結束/接續)
   const opTrailing = (sym) => `<div class="flow-op trailing">${sym}</div>`;
@@ -4653,7 +4661,7 @@ function renderFlow(d) {
   const line2 = `
     ${cell('出售價格', fmtN(d.sale), 'input')}
     ${op('×')}
-    ${cell('仲介費%', pct(d.sellerRate), 'rate')}
+    ${cell('仲介費%', FwPrecision.format('flow_seller_pct', pct(d.sellerRate)), 'rate', 'flow_seller_pct')}
     ${op('=')}
     ${cell('仲介費', fmtN(d.agentFee), 'result')}
   `;
@@ -4779,6 +4787,7 @@ function renderFlow(d) {
   `;
   if ($('flowBody')) {
     $('flowBody').innerHTML = html;
+    FwPrecision.refreshTargets();
     // 等下一幀,確保新 DOM 寬度量得到
     requestAnimationFrame(() => {
       if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers();
@@ -5006,7 +5015,7 @@ function renderPartyTables(d) {
   const finalRate = d.sale > 0 ? finalAgent / d.sale : 0;
 
   const agentHtml = `
-    <div class="pg-header">仲 介</div>
+    <div class="pg-header">仲介（成屋）</div>
 
     <div class="pg-group pg-group-noVlabel">
       <div class="pg-rows">
@@ -5022,7 +5031,7 @@ function renderPartyTables(d) {
       <div class="pg-final-label">最終服務費</div>
       <div class="pg-final-value" id="pt_agent_final">${fmtW4(finalAgent)}</div>
       <div class="pg-final-unit">萬</div>
-      <div class="pg-final-kpi" id="pt_agent_kpi">${fmtFlowPercent(finalRate)}</div>
+      <div class="pg-final-kpi" id="pt_agent_kpi">${FwPrecision.format('pt_agent_kpi', fmtFlowPercent(finalRate))}</div>
     </div>
   `;
   if ($('partyAgentBody')) {
@@ -5035,10 +5044,11 @@ function renderPartyTables(d) {
       if ($('pt_agent_rebate')) $('pt_agent_rebate').textContent = fmtW4(rebateToOwner);
       if ($('pt_agent_business')) $('pt_agent_business').textContent = fmtW4(businessTax);
       $('pt_agent_final').textContent = fmtW4(finalAgent);
-      if ($('pt_agent_kpi')) $('pt_agent_kpi').textContent = fmtFlowPercent(finalRate);
+      if ($('pt_agent_kpi')) $('pt_agent_kpi').textContent = FwPrecision.format('pt_agent_kpi', fmtFlowPercent(finalRate));
     } else {
       $('partyAgentBody').innerHTML = agentHtml;
     }
+    FwPrecision.refreshTargets();
   }
 
   // 還原焦點(若使用者打字中,讓 input 不要失焦,且原始文字不被改寫)
@@ -5735,8 +5745,8 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const fmtN = fmt;
     const pct = fmtFlowPercent;
 
-    const cell = (label, value, cls = '') =>
-      `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v">${value}</div></div>`;
+    const cell = (label, value, cls = '', id = '') =>
+      `<div class="flow-cell ${cls}"><div class="flow-cell-l">${label}</div><div class="flow-cell-v"${id ? ` id="${id}"` : ''}>${value}</div></div>`;
     const op = (sym) => `<div class="flow-op">${sym}</div>`;
     const opTrailing = (sym) => `<div class="flow-op trailing">${sym}</div>`;
 
@@ -5744,7 +5754,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const line2 = `
       ${cell('出售價格', fmtN(d.sale), 'input')}
       ${op('×')}
-      ${cell('仲介費%', pct(d.sellerRate), 'rate')}
+      ${cell('仲介費%', FwPrecision.format('p_flow_seller_pct', pct(d.sellerRate)), 'rate', 'p_flow_seller_pct')}
       ${op('=')}
       ${cell('仲介費', fmtN(d.sellerAgentFee), 'result')}
     `;
@@ -5844,6 +5854,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const body = document.getElementById('flowBody');
     if (body) {
       body.innerHTML = html;
+      FwPrecision.refreshTargets();
       requestAnimationFrame(() => {
         if (typeof autoFitFlowNumbers === 'function') autoFitFlowNumbers();
       });
@@ -6046,7 +6057,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
     if (document.getElementById('partyAgentBody')) {
       const agentHtmlP = `
-        <div class="pg-header">仲 介 ( 預售 )</div>
+        <div class="pg-header">仲介（預售）</div>
 
         <div class="pg-group pg-group-noVlabel">
           <div class="pg-rows">
@@ -6059,10 +6070,10 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
         </div>
 
         <div class="pg-final-bar">
-          <div class="pg-final-label">剩餘服務費</div>
+          <div class="pg-final-label">最終服務費</div>
           <div class="pg-final-value" id="p_pt_agent_final">${fmtW4(finalAgent)}</div>
           <div class="pg-final-unit">萬</div>
-          <div class="pg-final-kpi" id="p_pt_agent_kpi">${fmtFlowPercent(finalRate)}</div>
+          <div class="pg-final-kpi" id="p_pt_agent_kpi">${FwPrecision.format('p_pt_agent_kpi', fmtFlowPercent(finalRate))}</div>
         </div>
       `;
       // 正在編輯仲介「其它」時只更新連動數字,不重建(避免輸入框閃爍)
@@ -6074,10 +6085,11 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
         if (document.getElementById('p_pt_agent_business')) document.getElementById('p_pt_agent_business').textContent = fmtW4(businessTax);
         document.getElementById('p_pt_agent_final').textContent = fmtW4(finalAgent);
         const kpi = document.getElementById('p_pt_agent_kpi');
-        if (kpi) kpi.textContent = fmtFlowPercent(finalRate);
+        if (kpi) kpi.textContent = FwPrecision.format('p_pt_agent_kpi', fmtFlowPercent(finalRate));
       } else {
         document.getElementById('partyAgentBody').innerHTML = agentHtmlP;
       }
+      FwPrecision.refreshTargets();
     }
 
     // 還原焦點(原始文字不被改寫)
@@ -6354,6 +6366,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 先完成目前欄位，再保存其值，避免切版重建後才提交舊輸入框。
     if (typeof window.__commitCalcKbDraft === 'function' && window.__commitCalcKbDraft() === false) return;
     capturePartyFields();
+    const viewTicket = FwViewState.beforeSwitch(ver);
     btns.forEach(b => b.classList.toggle('active', b.dataset.ver === ver));
     if (ver === 'preview') {
       document.body.classList.add('is-preview');
@@ -6374,6 +6387,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     if (typeof syncClearBtnForVer === 'function') syncClearBtnForVer();
     writeStoredText(KEY, ver);
     window.__syncInteractiveRegions();
+    FwViewState.afterSwitch(viewTicket);
   }
   // 三區塊(成本明細 / 公式流程 / 三方明細)一鍵全展開或全收合
   function toggleAllSections(ver) {
@@ -7517,6 +7531,9 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (!kb.classList.contains('show')) return true;
     return closeKb() !== false;
   };
+  // Reading-position restoration waits for the existing keyboard motion to finish.
+  window.__isCalcKbMotionActive = () => kb.classList.contains('show') ||
+    kbCloseFrame !== null || kbClosePending !== null || kbCloseResumeTimer !== null || kbCloseResumeFrame !== null;
 
   // 導覽前先處理草稿；失敗時保留原欄位，避免先隱藏欄位或同一 click 重複提交。
   const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn';
