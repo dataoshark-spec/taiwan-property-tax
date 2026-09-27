@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.26C-profit-compact">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.26C-profit-compact">
+<link rel="manifest" href="manifest.json?v=2026.09.27A-storage">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27A-storage">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.26C-profit-compact">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27A-storage">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3517,7 +3517,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.26C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.27A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3598,6 +3598,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
+<script src="./storage.js?v=2026.09.27A-storage"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -3699,6 +3700,7 @@ function parseSavedObject(json) {
   } catch(e) { return null; }
 }
 function readStoredObject(key) {
+  if (window.__fwPersistence && (key === 'fwTax_customDefaults' || key === 'fwTax_lockState')) return window.__fwPersistence.settings(key);
   const json = readStoredText(key);
   if (json === null) return null;
   const state = parseSavedObject(json);
@@ -3744,6 +3746,7 @@ function showPendingCaseNotice() {
   showToast('資料未能儲存，請勿關閉 APP');
 }
 function readStoredCase(key, ids) {
+  if (window.__fwPersistence) return window.__fwPersistence.case(key);
   let json;
   try { json = localStorage.getItem(key); }
   catch(e) { markUnreadableCase(key); return null; }
@@ -3849,6 +3852,289 @@ const FIELDS = ['d_sale','d_buy','d_rate_select','d_seller_rate','d_buyer_rate',
   'ap_o_landgain','ap_o_selfuse',
   // 三方明細區可輸入欄位(對齊 Excel E68/Y71)
   'pt_loan_rate','pt_agent_other'];
+
+// 27A: explicit user operations only. Calculations and startup never save a case.
+const casePersistence = (() => {
+  const modes = ['ready', 'preview'];
+  const fees = ['ap_s_sign','ap_s_log','ap_s_bank','pp_s_daishu'];
+  const modeFields = {
+    ready: FIELDS.filter(id => id !== 'ap_o_selfuse'),
+    preview: [...clearTargetFields('preview'), 'p_rate_select']
+  };
+  const factory = Object.fromEntries(fees.map(id => [id, $(id).getAttribute('data-default')]));
+  const legacyKeys = ['house_tax_state_v1','house_tax_presale_v1','fwTax_customDefaults','fwTax_lockState'];
+  const fieldKey = (mode, id) => mode + '/' + id;
+  const epochKey = mode => mode + '/epoch';
+  const startKey = mode => mode + '/started';
+  const modeOf = id => modeFields.ready.includes(id) ? 'ready' : modeFields.preview.includes(id) ? 'preview' : null;
+  const emptyValue = id => id === 'pt_loan_rate' ? '80' : isPartyField(id) ? '0' : '';
+  const copy = value => JSON.parse(JSON.stringify(value));
+  let store, view, started = false, applying = false, refreshPending = false;
+  let refreshQueued = false;
+
+  function seed() {
+    // An old page cannot participate in this protocol. Require a stable read of
+    // its four records; after migration none of those records is consulted again.
+    let raw;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const first = legacyKeys.map(key => localStorage.getItem(key));
+      const second = legacyKeys.map(key => localStorage.getItem(key));
+      if (first.every((value, index) => value === second[index])) { raw = second; break; }
+    }
+    if (!raw) throw new Error('Legacy records changed during migration');
+    const custom = raw[2] === null ? {} : parseSavedObject(raw[2]);
+    const locks = raw[3] === null ? {} : parseSavedObject(raw[3]);
+    if (!custom || !locks) throw new Error('Unreadable legacy settings');
+    const cells = {};
+    modes.forEach((mode, index) => {
+      const saved = raw[index] === null ? null : parseSavedCase(raw[index], modeFields[mode]);
+      const state = saved && !hasUnsupportedCaseStateVersion(saved) ? saved : null;
+      const meta = state && state.__inputState;
+      const hasInput = state && modeFields[mode].some(id => isPartyField(id)
+        ? isNonDefaultPartyValue(id, state[id]) : normalizeNumericFieldValue(id, state[id]) !== '');
+      const awaiting = meta ? meta.awaitingFirstInput : !hasInput;
+      cells[epochKey(mode)] = 'initial';
+      cells[startKey(mode)] = { epoch: 'initial', value: !awaiting };
+      modeFields[mode].forEach(id => {
+        const value = state && Object.prototype.hasOwnProperty.call(state, id)
+          ? normalizeNumericFieldValue(id, state[id]) : emptyValue(id);
+        const cell = { epoch: 'initial', value, cleared: fees.includes(id) &&
+          (meta ? meta.cleared.includes(id) : awaiting) };
+        if (fees.includes(id)) {
+          const oldDefault = normalizeNumericFieldValue(id, custom[id]);
+          cell.defaultValue = oldDefault === '' ? factory[id] : oldDefault;
+          cell.source = oldDefault === '' ? 'factory' : 'legacy';
+          cell.locked = locks[id] === 'false' ? 'false' : 'true';
+        }
+        cells[fieldKey(mode, id)] = cell;
+      });
+    });
+    return cells;
+  }
+  function validate(state) {
+    if (!state || !state.cells) throw new Error('Missing local state');
+    modes.forEach(mode => {
+      const epoch = state.cells[epochKey(mode)]?.value;
+      const start = state.cells[startKey(mode)]?.value;
+      if (typeof epoch !== 'string' || !start || typeof start.epoch !== 'string' || typeof start.value !== 'boolean') throw new Error('Invalid case state');
+      modeFields[mode].forEach(id => {
+        const value = state.cells[fieldKey(mode, id)]?.value;
+        if (!value || typeof value.epoch !== 'string' || typeof value.value !== 'string' ||
+          typeof value.cleared !== 'boolean' || (value.value !== '' && normalizeNumericFieldValue(id, value.value) === '')) throw new Error('Invalid field state');
+        if (fees.includes(id) && (normalizeNumericFieldValue(id, value.defaultValue) === '' ||
+          !['factory','legacy','user'].includes(value.source) || !['true','false'].includes(value.locked))) throw new Error('Invalid fee state');
+      });
+    });
+    return state;
+  }
+  function fail(mode, reading = false) {
+    if (reading) return; // Keep the existing silent empty-case read-failure policy.
+    reportStorageIssue(caseStorageKey(mode || currentVerKey()), false);
+  }
+  try {
+    store = window.FwLocalStore.create({ namespace: 'fwTax_store_v1', seed });
+    view = validate(store.read());
+  } catch (error) { view = null; }
+
+  function readFresh() { return validate(store.read()); }
+  function getEpoch(state, mode) { return state.cells[epochKey(mode)].value; }
+  function caseState(state, mode) {
+    if (!state) return null;
+    const epoch = getEpoch(state, mode);
+    const result = {};
+    const cleared = [];
+    modeFields[mode].forEach(id => {
+      const cell = state.cells[fieldKey(mode, id)].value;
+      const active = cell.epoch === epoch;
+      result[id] = active ? cell.value : emptyValue(id);
+      if (fees.includes(id) && (!active || cell.cleared)) cleared.push(id);
+    });
+    const start = state.cells[startKey(mode)].value;
+    result.__inputState = { version: 1, awaitingFirstInput: start.epoch !== epoch || !start.value, cleared };
+    return result;
+  }
+  function settings(key) {
+    if (!view) return null;
+    return Object.fromEntries(fees.map(id => {
+      const cell = view.cells[fieldKey(modeOf(id), id)].value;
+      return [id, key === 'fwTax_lockState' ? cell.locked : cell.defaultValue];
+    }));
+  }
+  function applySettings(state) {
+    fees.forEach(id => {
+      const cell = state.cells[fieldKey(modeOf(id), id)].value;
+      const el = $(id);
+      const button = document.querySelector('.lock-btn[data-lock-target="' + id + '"]');
+      el.setAttribute('data-default', cell.defaultValue);
+      if (el.dataset.cleared === '1') el.dataset.ph = cell.defaultValue;
+      else el.setAttribute('placeholder', cell.defaultValue);
+      button.dataset.locked = cell.locked;
+      button.innerHTML = cell.locked === 'true' ? lockedSvg() : LOCK_SVG.unlocked;
+      el.classList.toggle('is-locked', cell.locked === 'true');
+      // Custom keypad owns readonly on editable fields after binding.
+      if (cell.locked === 'true' || el.dataset.ckBound === '1') el.setAttribute('readonly', '');
+      else el.removeAttribute('readonly');
+    });
+  }
+  function apply(state, preserveSnapshots = false) {
+    applying = true;
+    try {
+      const previous = view;
+      view = state;
+      applySettings(state);
+      modes.forEach(mode => {
+        const data = caseState(state, mode);
+        modeFields[mode].forEach(id => {
+          if (isPartyField(id)) PARTY_FIELD_VALUES[id] = data[id];
+          const el = $(id);
+          if (el) el.value = data[id];
+        });
+        restoreCaseInputState(mode, data);
+        if (!data.__inputState.awaitingFirstInput ||
+          (!preserveSnapshots && previous && getEpoch(previous, mode) !== getEpoch(state, mode))) clearSnapshots[mode] = null;
+      });
+      calc();
+      if (typeof window.calcPresale === 'function') window.calcPresale();
+      updateBtnVisibility();
+      window.__syncInteractiveRegions();
+    } finally { applying = false; }
+  }
+  function editing() { return document.getElementById('calcKb')?.classList.contains('show'); }
+  function refresh() {
+    if (!started || applying) return;
+    if (editing()) { refreshPending = true; return; }
+    try { apply(readFresh()); refreshPending = false; }
+    catch (error) { refreshPending = true; }
+  }
+  function scheduleRefresh() {
+    refreshPending = true;
+    if (refreshQueued) return;
+    refreshQueued = true;
+    queueMicrotask(() => { refreshQueued = false; refresh(); });
+  }
+  function expected(mode, ids) {
+    const result = { [epochKey(mode)]: view.cells[epochKey(mode)].rev };
+    ids.forEach(id => { const key = fieldKey(mode, id); result[key] = view.cells[key].rev; });
+    return result;
+  }
+  function save(mode, patch, guards) {
+    if (!store || !view) { fail(mode); return false; }
+    try {
+      const result = store.commit(patch, guards);
+      if (!result.ok) { fail(mode); scheduleRefresh(); return false; }
+      const next = validate(result.state);
+      // Advance the visible baseline only for fields this page actually changed.
+      // Remote fields stay on their visible revision until the UI can refresh.
+      Object.keys(patch).forEach(key => { view.cells[key] = copy(next.cells[key]); });
+      pendingCaseWriteNotices.delete(caseStorageKey(mode));
+      scheduleRefresh();
+      return true;
+    } catch (error) { fail(mode); return false; }
+  }
+  function captureField(mode, id, state = view) {
+    const previous = copy(state.cells[fieldKey(mode, id)].value);
+    const el = $(id);
+    const committed = isPartyField(id) ? { value: readPartyField(id), cleared: null } : readCommittedFieldState(el);
+    previous.epoch = getEpoch(state, mode);
+    previous.value = committed.value;
+    previous.cleared = committed.cleared === '1';
+    return previous;
+  }
+  function input(event) {
+    if (!started || applying || !view) return;
+    const el = event.target;
+    if (!el || !el.id || (event.type === 'input' ? el.tagName !== 'INPUT' : el.tagName !== 'SELECT')) return;
+    const mode = modeOf(el.id);
+    if (!mode) return;
+    const patch = { [fieldKey(mode, el.id)]: captureField(mode, el.id) };
+    const guards = expected(mode, [el.id]);
+    const oldStart = view.cells[startKey(mode)].value;
+    const epoch = getEpoch(view, mode);
+    if (oldStart.epoch !== epoch || !oldStart.value) {
+      try {
+        const latest = readFresh();
+        const latestStart = latest.cells[startKey(mode)].value;
+        if (getEpoch(latest, mode) === epoch && (latestStart.epoch !== epoch || !latestStart.value)) {
+          LOCKED_DEFAULT_FIELDS[mode].forEach(id => {
+            if (id === el.id) return;
+            const key = fieldKey(mode, id);
+            const fee = copy(latest.cells[key].value);
+            fee.epoch = epoch; fee.value = fee.defaultValue; fee.cleared = false;
+            patch[key] = fee; guards[key] = latest.cells[key].rev;
+          });
+          patch[startKey(mode)] = { epoch, value: true };
+          guards[startKey(mode)] = latest.cells[startKey(mode)].rev;
+        }
+      } catch (error) { fail(mode); return; }
+    }
+    save(mode, patch, guards);
+  }
+  function commitLock(id) {
+    const mode = modeOf(id);
+    if (!view) { fail(mode); return false; }
+    const key = fieldKey(mode, id);
+    const button = document.querySelector('.lock-btn[data-lock-target="' + id + '"]');
+    const cell = captureField(mode, id);
+    cell.locked = button.dataset.locked;
+    if (cell.locked === 'true' && cell.value !== '') {
+      cell.defaultValue = cell.value;
+      cell.source = 'user';
+    }
+    const ok = save(mode, { [key]: cell }, expected(mode, [id]));
+    if (!ok) applySettings(view);
+    return ok;
+  }
+  function beforeReset(mode, restoring = false) {
+    if (!view) { fail(mode); return false; }
+    try {
+      const latest = readFresh();
+      const keys = [epochKey(mode), ...modeFields[mode].map(id => fieldKey(mode, id))];
+      if (restoring && keys.some(key => JSON.stringify(view.cells[key].rev) !== JSON.stringify(latest.cells[key].rev))) {
+        clearSnapshots[mode] = null;
+        apply(latest);
+        fail(mode);
+        return false;
+      }
+      apply(latest, true);
+      return true;
+    }
+    catch (error) { fail(mode); return false; }
+  }
+  function reset(mode, restore) {
+    if (!view) { fail(mode); return false; }
+    const epoch = crypto.randomUUID();
+    const patch = { [epochKey(mode)]: epoch, [startKey(mode)]: { epoch, value: !initialClearState[mode] } };
+    if (restore) {
+      modeFields[mode].forEach(id => {
+        const cell = captureField(mode, id);
+        cell.epoch = epoch;
+        patch[fieldKey(mode, id)] = cell;
+      });
+    }
+    const ok = save(mode, patch, expected(mode, modeFields[mode]));
+    if (!ok) {
+      try { apply(readFresh(), true); }
+      catch (error) { apply(view, true); }
+    }
+    return ok;
+  }
+  return {
+    case(key) { return caseState(view, key === 'house_tax_presale_v1' ? 'preview' : 'ready'); },
+    settings, commitLock, beforeReset, reset, afterEditing: scheduleRefresh,
+    start() {
+      started = true;
+      document.addEventListener('input', input);
+      document.addEventListener('change', input);
+      window.addEventListener('storage', event => { if (event.key === null || event.key.startsWith('fwTax_store_v1')) scheduleRefresh(); });
+      window.addEventListener('pageshow', scheduleRefresh);
+      window.addEventListener('focus', scheduleRefresh);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRefresh(); });
+      scheduleRefresh();
+    }
+  };
+})();
+window.__fwPersistence = casePersistence;
+
 
 function num(id) {
   if (isPartyField(id)) return Number(readPartyField(id)) || 0;
@@ -4870,11 +5156,11 @@ document.querySelectorAll('.lock-btn').forEach(btn => {
       if (v !== '') {
         target.setAttribute('data-default', v);
         target.setAttribute('placeholder', v);
-        if (typeof saveCustomDefaults === 'function') saveCustomDefaults();
+
       }
       target.blur();
     }
-    saveLockState();
+    casePersistence.commitLock(target.id);
     window.__syncInteractiveRegions();
   });
 });
@@ -4882,14 +5168,6 @@ document.querySelectorAll('.lock-btn').forEach(btn => {
 // === 鎖定狀態持久化 ===
 // 把每個可鎖定欄位的「鎖/解」狀態存進 localStorage,重新整理後還原
 const LOCK_STATE_KEY = 'fwTax_lockState';
-function saveLockState() {
-  const state = {};
-  document.querySelectorAll('.lock-btn[data-lock-target]').forEach(btn => {
-    if (btn.classList.contains('permanent')) return;
-    state[btn.dataset.lockTarget] = btn.dataset.locked;
-  });
-  writeStoredText(LOCK_STATE_KEY, JSON.stringify(state));
-}
 function loadLockState() {
   const state = readStoredObject(LOCK_STATE_KEY);
   if (!state) return;
@@ -4923,19 +5201,6 @@ window.__syncInteractiveRegions();
 const CUSTOM_DEFAULT_KEY = 'fwTax_customDefaults';
 // 所有可鎖定欄位(成屋 + 預售),即會被「鎖回去存預設值」影響的欄位
 const LOCKABLE_FIELD_IDS = ['ap_s_sign','ap_s_log','ap_s_bank','pp_s_daishu'];
-
-function saveCustomDefaults() {
-  const state = {};
-  LOCKABLE_FIELD_IDS.forEach(id => {
-    const el = $(id);
-    if (el && el.hasAttribute('data-default')) {
-      const value = normalizeNumericFieldValue(id, el.getAttribute('data-default'));
-      if (value !== '') state[id] = value;
-    }
-  });
-  writeStoredText(CUSTOM_DEFAULT_KEY, JSON.stringify(state));
-}
-window.saveCustomDefaults = saveCustomDefaults;
 
 function loadCustomDefaults() {
   const state = readStoredObject(CUSTOM_DEFAULT_KEY);
@@ -5027,10 +5292,10 @@ document.addEventListener('input', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('pt-input')) {
     if (document.body.classList.contains('is-preview')) {
       if (typeof window.calcPresale === 'function') window.calcPresale();
-      if (typeof window.savePresaleState === 'function') window.savePresaleState();
+      
     } else {
       calc();
-      if (typeof saveState === 'function') saveState();
+
     }
   }
 });
@@ -5136,36 +5401,10 @@ window.addEventListener('resize', () => {
 // 用 localStorage 與 URL hash 雙重儲存,確保重新整理時數值不會掉
 const STORAGE_KEY = 'house_tax_state_v1';
 
-function saveState() {
-  capturePartyFields();
-  const state = {};
-  FIELDS.forEach(id => {
-    const el = $(id);
-    if (isPartyField(id)) state[id] = readPartyField(id);
-    else if (el) state[id] = readCommittedFieldValue(el);
-  });
-  state.__inputState = captureCaseInputState('ready');
-  const json = JSON.stringify(state);
-  // 嘗試 localStorage (有些環境會擋)
-  writeStoredText(STORAGE_KEY, json);
-  // 同時用 URL hash 備援(沙盒環境也能用)
-  try {
-    history.replaceState(null, '', '#' + encodeURIComponent(json));
-  } catch(e) {}
-}
-
 function loadState() {
   // 本機已保存的案件（包含有效清空案）優先；只有確實沒有本機案件才讀網址備援。
   // 舊案讀不到時直接清空重新輸入，不讓舊網址把它換成另一份資料。
   let state = readStoredCase(STORAGE_KEY, FIELDS);
-  if (!state && !failedCaseLoads.has(STORAGE_KEY) && location.hash.length > 1) {
-    try { state = parseSavedCase(decodeURIComponent(location.hash.slice(1)), FIELDS); }
-    catch(e) { state = null; }
-    if (!state || hasUnsupportedCaseStateVersion(state)) {
-      markUnreadableCase(STORAGE_KEY);
-      state = null;
-    }
-  }
   if (!state) return false;
   try {
     let restored = 0;
@@ -5197,12 +5436,7 @@ function loadState() {
   }
 }
 
-// 每次計算後自動存
-const _origCalc = calc;
-calc = function() {
-  _origCalc();
-  saveState();
-};
+// 保存由明確的輸入、鎖定、清空與恢復操作處理；重算不寫入案件。
 
 // 只依案件能否有效載入決定初始清空，舊啟動標記不能抹掉有效資料。
 const INIT_FLAG_KEY = 'house_tax_init_v2';
@@ -5406,7 +5640,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     // 預售的 select change 不一定有綁 calc,直接補呼叫
     if (isPreview()) {
       if (typeof window.calcPresale === 'function') window.calcPresale();
-      if (typeof window.savePresaleState === 'function') window.savePresaleState();
+      
     }
     syncSelected();
     return true;
@@ -6032,24 +6266,13 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   FIELDS_P.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.addEventListener('input', () => { calcPresale(); savePresaleState(); });
-      el.addEventListener('change', () => { calcPresale(); savePresaleState(); });
+      el.addEventListener('input', () => { calcPresale(); });
+      el.addEventListener('change', () => { calcPresale(); });
     }
   });
 
   // === 預售版獨立儲存/還原 ===
   const PRESALE_KEY = 'house_tax_presale_v1';
-  function savePresaleState() {
-    capturePartyFields();
-    const state = {};
-    FIELDS_P.forEach(id => {
-      const el = document.getElementById(id);
-      if (isPartyField(id)) state[id] = readPartyField(id);
-      else if (el) state[id] = readCommittedFieldValue(el);
-    });
-    state.__inputState = captureCaseInputState('preview');
-    writeStoredText(PRESALE_KEY, JSON.stringify(state));
-  }
   function loadPresaleState() {
     try {
       const state = readStoredCase(PRESALE_KEY, FIELDS_P);
@@ -6086,7 +6309,6 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
   // 開放給外部呼叫
   window.calcPresale = calcPresale;
-  window.savePresaleState = savePresaleState;
 
   // 啟動時若已在預售版,跑一次
   if (document.body.classList.contains('is-preview')) {
@@ -6370,12 +6592,14 @@ function enterClearedState(verKey, opts) {
   // 清空取消尚未提交的計算機草稿；建立快照時只取已完成的原值。
   if (typeof window.__cancelCalcKbDraft === 'function') window.__cancelCalcKbDraft();
   opts = opts || {};
+  if (!opts.asInitial && !casePersistence.beforeReset(verKey)) return;
   if (!opts.silent && !opts.asInitial) {
     blockedStorageKeys.delete(caseStorageKey(verKey));
   }
   // asInitial = true:首次打開的初始清空 — 外觀清空,但按鈕維持「清空數值」、不留 snapshot
   //                   (使用者尚無「上一次數值」可恢復,不顯示「恢復數值」以免誤導)
   const asInitial = !!opts.asInitial;
+  const snapshotBeforeClear = clearSnapshots[verKey];
   const targetFields = clearTargetFields(verKey);
   const lockedDefaults = LOCKED_DEFAULT_FIELDS[verKey];
   const rateEl = $(RATE_SELECT_ID[verKey]);
@@ -6430,7 +6654,12 @@ function enterClearedState(verKey, opts) {
   initialClearState[verKey] = true;
   runCalc();
   // 預售的重算沒有自動存檔，清空也須立即保存，重新開啟才不會讀回舊值。
-  if (verKey === 'preview' && typeof window.savePresaleState === 'function') window.savePresaleState();
+  
+  if (!asInitial && !casePersistence.reset(verKey, false)) {
+    clearSnapshots[verKey] = snapshotBeforeClear;
+    updateBtnVisibility();
+    return false;
+  }
   // 更新「恢復數值」按鈕顯隱:
   //  asInitial(首次打開)→ 無 snapshot → 不顯示恢復按鈕
   //  一般清空 → 有 snapshot → 顯示恢復按鈕
@@ -6445,7 +6674,8 @@ function enterClearedState(verKey, opts) {
 // 離開「清空狀態」並恢復 snapshot 內的數值(按「恢復數值」用)
 function restoreClearedState(verKey) {
   const snap = clearSnapshots[verKey];
-  if (!snap) return;
+  if (!snap) return false;
+  if (!casePersistence.beforeReset(verKey, true)) return false;
   // 恢復必須先取消舊草稿與延遲開欄，不能讓舊計算機在冒泡時覆寫快照。
   if (typeof window.__cancelCalcKbDraft === 'function') window.__cancelCalcKbDraft();
   const rateEl = $(RATE_SELECT_ID[verKey]);
@@ -6467,8 +6697,14 @@ function restoreClearedState(verKey) {
   initialClearState[verKey] = false;
   restoreCaseInputState(verKey, snap);
   runCalc();
-  if (verKey === 'preview' && typeof window.savePresaleState === 'function') window.savePresaleState();
+  
+  if (!casePersistence.reset(verKey, true)) {
+    clearSnapshots[verKey] = snap;
+    updateBtnVisibility();
+    return false;
+  }
   if (verKey === currentVerKey()) resetClearBtn();
+  return true;
 }
 
 // 「清空數值」按鈕:永遠只做清空(不再切換成恢復)
@@ -6482,7 +6718,7 @@ $('clearBtn').addEventListener('click', () => {
 $('restoreBtn').addEventListener('click', () => {
   const verKey = currentVerKey();
   if (clearSnapshots[verKey] !== null) {
-    restoreClearedState(verKey);
+    if (restoreClearedState(verKey) === false) return;
     showToast('已恢復原本數值');
   }
 });
@@ -6510,7 +6746,7 @@ function handleFirstInput(verKey, sourceId, keepCostCleared = false) {
     // 回填後立即重算,讓回填的預設值反映到畫面
     if (verKey === 'preview') {
       if (typeof window.calcPresale === 'function') window.calcPresale();
-      if (typeof window.savePresaleState === 'function') window.savePresaleState();
+      
     } else {
       if (typeof calc === 'function') calc();
     }
@@ -7225,6 +7461,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     resetKbGestureState();
     negativeNoticeUI.closed(noticeRevision, true);
     if (restoreFocus) restoreKbFieldFocus(focusId, true);
+    casePersistence.afterEditing();
   }
 
   // ESC:取消本次輸入、還原開啟前數值並關閉鍵盤
@@ -7255,6 +7492,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     touched = false;
     resetKbGestureState();
     if (restoreFocus) restoreKbFieldFocus(focusId, true);
+    casePersistence.afterEditing();
   }
 
   window.__cancelCalcKbDraft = function(){
@@ -8057,6 +8295,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   }, true);
 })();
 
+casePersistence.start();
 </script>
 </body>
 </html>
