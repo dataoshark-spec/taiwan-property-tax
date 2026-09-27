@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.28A-view">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28A-view">
+<link rel="manifest" href="manifest.json?v=2026.09.28B-direct">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28B-direct">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28A-view">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28B-direct">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -1734,6 +1734,9 @@
   .collapse-section.open .collapse-section-body {
     max-height: 4000px;
   }
+  html.view-switching .collapse-section-body,
+  html.view-switching .collapse-section-chevron { transition: none !important; }
+  html.view-switching { scroll-behavior: auto !important; overflow-anchor: none; }
   .collapse-section-inner { padding: 12px; }
 
   /* === 公式流程(橫向迷你格子,模仿 Excel)=== */
@@ -3532,7 +3535,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.28A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.28B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3613,9 +3616,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.28A-view"></script>
-<script src="./precision.js?v=2026.09.28A-view"></script>
-<script src="./view-state.js?v=2026.09.28A-view"></script>
+<script src="./storage.js?v=2026.09.28B-direct"></script>
+<script src="./precision.js?v=2026.09.28B-direct"></script>
+<script src="./view-state.js?v=2026.09.28B-direct"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -7534,6 +7537,22 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // Reading-position restoration waits for the existing keyboard motion to finish.
   window.__isCalcKbMotionActive = () => kb.classList.contains('show') ||
     kbCloseFrame !== null || kbClosePending !== null || kbCloseResumeTimer !== null || kbCloseResumeFrame !== null;
+  // A successful mode switch can finish closing visuals before its first paint.
+  // Draft validation/submission has already completed through the original path.
+  window.__settleCalcKbForModeSwitch = function(){
+    if (kb.classList.contains('show') || hasHeldCalcNav()) return false;
+    stopFieldVisibility();
+    cancelKbCloseMotion();
+    const transition = kb.style.getPropertyValue('transition');
+    const priority = kb.style.getPropertyPriority('transition');
+    kb.style.setProperty('transition', 'none', 'important');
+    document.body.classList.remove('calc-header-flow');
+    document.body.style.paddingBottom = '';
+    kb.getBoundingClientRect();
+    if (transition) kb.style.setProperty('transition', transition, priority);
+    else kb.style.removeProperty('transition');
+    return true;
+  };
 
   // 導覽前先處理草稿；失敗時保留原欄位，避免先隱藏欄位或同一 click 重複提交。
   const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn';

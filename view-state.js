@@ -19,6 +19,7 @@
     if (frame !== null) cancelAnimationFrame(frame);
     frame = null;
     pending = null;
+    document.documentElement.classList.remove('view-switching');
     if (acceptCurrentScroll) currentScrollReady = true;
   }
 
@@ -51,17 +52,10 @@
     cancelPending(false);
     currentMode = mode;
     currentScrollReady = false;
+    // Restore the destination before the browser paints it. Manual section
+    // toggles still use their normal animation outside this short transaction.
+    document.documentElement.classList.add('view-switching');
     return { generation: ++generation, mode };
-  }
-
-  function sharedBodies() {
-    return ['flowSection', 'partySection'].map(id =>
-      byId(id)?.querySelector('.collapse-section-body')).filter(Boolean);
-  }
-
-  function sectionMotionActive() {
-    return sharedBodies().some(body => typeof body.getAnimations === 'function' &&
-      body.getAnimations().some(animation => animation.pending || animation.playState === 'running'));
   }
 
   function keyboardMotionActive() {
@@ -84,32 +78,25 @@
     const job = pending;
     if (!job || job.generation !== generation || job.mode !== currentMode) return;
     if (pointers.size || document.hidden) return;
-    if (keyboardMotionActive() || sectionMotionActive()) {
-      job.stableFrames = 0;
-      job.signature = null;
+    // This hook only finishes already-committed keyboard visuals. It refuses
+    // an open editor or held navigation; it never submits or changes a value.
+    const keyboardReady = typeof window.__settleCalcKbForModeSwitch === 'function'
+      ? window.__settleCalcKbForModeSwitch() : !keyboardMotionActive();
+    if (!keyboardReady) {
       schedule();
       return;
     }
-    if (!job.fitted) {
-      job.fitted = true;
-      if (views[currentMode].flowOpen && typeof window.autoFitFlowNumbers === 'function') {
-        window.autoFitFlowNumbers();
-      }
-    }
-    // Mode application already queues label fitting at 50/60 ms. Allow those and
-    // the section transition to finish before clamping to the destination height.
-    const signature = [document.documentElement.scrollHeight, window.innerWidth,
-      window.innerHeight, ...sharedBodies().map(body => body.getBoundingClientRect().height)].join('|');
-    job.stableFrames = signature === job.signature ? job.stableFrames + 1 : 0;
-    job.signature = signature;
-    if (performance.now() - job.startedAt < 80 || job.stableFrames < 2) {
-      schedule();
-      return;
-    }
+    if (views[currentMode].flowOpen && typeof window.autoFitFlowNumbers === 'function') window.autoFitFlowNumbers();
+    if (typeof window.__fitDashLabels === 'function') window.__fitDashLabels();
+    if (typeof window.__fitSafetyValues === 'function') window.__fitSafetyValues();
+    // Reading the final layout commits transition:none and the destination
+    // heights. Restore Y in this same task, before the first destination paint.
     const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
     window.scrollTo({ left: window.scrollX, top: Math.min(job.scrollY, maxY), behavior: 'instant' });
+    document.documentElement.getBoundingClientRect();
     currentScrollReady = true;
     pending = null;
+    document.documentElement.classList.remove('view-switching');
   }
 
   function afterSwitch(ticket) {
@@ -123,9 +110,11 @@
       content.classList.toggle('active', content.id === 'party-' + state.partyTab));
     if (typeof window.__syncInteractiveRegions === 'function') window.__syncInteractiveRegions();
     if (typeof window.refreshPartyWanDisplays === 'function') window.refreshPartyWanDisplays();
-    pending = { generation, mode: currentMode, scrollY: state.scrollY,
-      startedAt: performance.now(), signature: null, stableFrames: 0, fitted: false };
-    schedule();
+    pending = { generation, mode: currentMode, scrollY: state.scrollY };
+    // Resolve section height now even during a held navigation gesture. Only
+    // the scroll is deferred until release, to keep the pressed control stable.
+    document.documentElement.getBoundingClientRect();
+    restoreWhenSettled();
   }
 
   function isOtherModeControl(target) {
