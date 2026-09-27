@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.27B-precision">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27B-precision">
+<link rel="manifest" href="manifest.json?v=2026.09.27C-strict6">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27C-strict6">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27B-precision">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27C-strict6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3525,7 +3525,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.27B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.27C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3606,13 +3606,20 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.27B-precision"></script>
-<script src="./precision.js?v=2026.09.27B-precision"></script>
+<script src="./storage.js?v=2026.09.27C-strict6"></script>
+<script src="./precision.js?v=2026.09.27C-strict6"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
 // 僅供顯示截尾：吸收整數邊界附近的浮點誤差，不回寫計算值。
 // 真正有尾數時仍朝零截尾，例如 849.9999 仍為 849。
+// 佣收上限只在警示比較時對齊 Excel 的 15 位有效數字。
+// 避免 1% + 5% 的二進位尾差誤反紅；不用畫面位數，也不回寫原始金額或比例。
+function isCommissionOverCap(value) {
+  if (!Number.isFinite(value)) return value > 0.06;
+  return Number(value.toPrecision(15)) > 0.06;
+}
+
 // 最後佣收的零門檻：只在警示判斷吸收相消造成的浮點尾差，不回寫金額。
 // 使用元與原運算項目的尺度，不能套用百分比的 6% 上界容差。
 function isNonPositiveCommission(sale, amount, ...operands) {
@@ -4260,19 +4267,17 @@ function calc() {
   //  R13 總佣收  : 值 > 6% → 反紅
   //  R14 佣收防呆: 值 > 6% → 反紅(防呆全加,若使用者重複輸入會 > 總佣收進而 > 6%)
   //  R15 最後佣收: 值 > 6% 或 值 ≤ 0 → 反紅
-  // 容差用 1e-9 僅為吸收浮點誤差(例如 0.0401+0.02 會算成 0.06009999…),不是業務容差
+  // 使用未縮位的原始比例嚴格判斷 > 6%；顯示位數不影響超標警示。
   // 清空狀態:三格全部不反紅(尚未開始輸入,不該顯示異常);使用者輸入任一欄後才恢復判斷
-  const CAP = 0.06;
-  const EPS = 1e-9;
   // 「未開始輸入」判定:售價欄位空白 → 三格全不反紅
   // (涵蓋初次載入、清空後重新整理等情況;不只依賴記憶體中的 clearSnapshots)
   const _saleEl = $('d_sale');
   const notStarted = readCommittedFieldValue(_saleEl) === '';
   const isCleared = notStarted ||
     ((typeof clearSnapshots !== 'undefined') && clearSnapshots.ready !== null);
-  const totalAbnormal = !isCleared && (totalCommission > CAP + EPS);
-  const limitAbnormal = !isCleared && (safetyCheck > CAP + EPS);
-  const finalAbnormal = !isCleared && ((finalCommission > CAP + EPS) || isNonPositiveCommission(sale, finalCommAmount, totalCommElem, rebate * 1.13, agentOtherElem, ...(rebate > 0 ? [sale, buy, tax, agentFee, sellMiscTotal, buyCost, nonDeductible, targetProfit] : [])));
+  const totalAbnormal = !isCleared && (isCommissionOverCap(totalCommission));
+  const limitAbnormal = !isCleared && (isCommissionOverCap(safetyCheck));
+  const finalAbnormal = !isCleared && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommElem, rebate * 1.13, agentOtherElem, ...(rebate > 0 ? [sale, buy, tax, agentFee, sellMiscTotal, buyCost, nonDeductible, targetProfit] : [])));
 
   if ($('cell_total')) $('cell_total').classList.toggle('abnormal', totalAbnormal);
   if ($('cell_limit')) $('cell_limit').classList.toggle('abnormal', limitAbnormal);
@@ -6232,20 +6237,19 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const cT = document.getElementById('p_cell_total');
     const cL = document.getElementById('p_cell_limit');
     const cF = document.getElementById('p_cell_final');
-    // 三格全對齊成屋版與 Excel 條件格式(T15/T16/T17):
+    // 三格全對齊成屋版與 Excel 條件格式(T12/T13/T14)，依未縮位原比例判斷：
     //  總佣收、佣收防呆:值 > 6% → 反紅
     //  最後佣收:值 > 6% 或 值 ≤ 0 → 反紅
     // 清空狀態:三格全部不反紅;使用者輸入任一欄後才恢復判斷
-    const CAP = 0.06, EPS = 1e-9;
     // 「未開始輸入」判定:售價欄位空白 → 三格全不反紅
     // (涵蓋初次載入、清空後重新整理等情況;不只依賴記憶體中的 clearSnapshots)
     const _pSaleEl = document.getElementById('p_sale');
     const notStartedP = readCommittedFieldValue(_pSaleEl) === '';
     const isClearedP = notStartedP ||
       ((typeof clearSnapshots !== 'undefined') && clearSnapshots.preview !== null);
-    const totalAbnormal = !isClearedP && (totalCommission > CAP + EPS);
-    const safetyAbnormal = !isClearedP && (safetyCheck > CAP + EPS);
-    const finalAbnormal = !isClearedP && ((finalCommission > CAP + EPS) || isNonPositiveCommission(sale, finalCommAmount, totalCommAmount, rebate * 1.13, agentOtherElemP, ...(rebate > 0 ? [sale, buy, tax, sellerAgentFee, sellMisc, buyTaxFee, nonDeductible, targetProfit] : [])));
+    const totalAbnormal = !isClearedP && (isCommissionOverCap(totalCommission));
+    const safetyAbnormal = !isClearedP && (isCommissionOverCap(safetyCheck));
+    const finalAbnormal = !isClearedP && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommAmount, rebate * 1.13, agentOtherElemP, ...(rebate > 0 ? [sale, buy, tax, sellerAgentFee, sellMisc, buyTaxFee, nonDeductible, targetProfit] : [])));
     if (cT) cT.classList.toggle('abnormal', totalAbnormal);
     if (cL) cL.classList.toggle('abnormal', safetyAbnormal);
     if (cF) cF.classList.toggle('abnormal', finalAbnormal);
