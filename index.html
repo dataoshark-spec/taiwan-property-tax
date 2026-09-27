@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.27A-storage">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27A-storage">
+<link rel="manifest" href="manifest.json?v=2026.09.27B-precision">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.27B-precision">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27A-storage">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.27B-precision">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -2787,6 +2787,14 @@
   }
 }
 
+
+/* Display precision: use the existing complete result box, without overlays or new spacing. */
+[data-precision-group] { cursor: pointer; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+[data-precision-group]:focus-visible { outline: 2px solid #BBA56D; outline-offset: -2px; }
+[data-precision-group].precision-pressed { box-shadow: inset 0 0 0 999px rgba(127,127,127,.12); }
+@media (hover: hover) and (pointer: fine) {
+  [data-precision-group]:hover { box-shadow: inset 0 0 0 999px rgba(127,127,127,.08); }
+}
 </style>
 <style>
 /* Approved loan percentage feedback: three flashes and a same-row message. */
@@ -3517,7 +3525,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.27A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.27B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3598,7 +3606,8 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.27A-storage"></script>
+<script src="./storage.js?v=2026.09.27B-precision"></script>
+<script src="./precision.js?v=2026.09.27B-precision"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -4273,17 +4282,17 @@ function calc() {
   if ($('s_limit')) setSafetyValue('s_limit', fmtFlowPercent(safetyCheck));
   if ($('s_final')) setSafetyValue('s_final', fmtFlowPercent(finalCommission));
   $('d_rate').textContent = rateSelected ? fmtTaxRate(rate) : '—';
-  if ($('d_buyer_total')) $('d_buyer_total').textContent = fmtWan4(buyerTotal);
+  if ($('d_buyer_total')) $('d_buyer_total').textContent = FwPrecision.format('d_buyer_total', fmtWan4(buyerTotal));
   // 「出售可列舉」格只顯示「出售雜項+仲介費(不含土增稅)」(sellCostExclLandTax),非取大值;
   // 稅基計算仍用 sellDeductible = MAX(免稅額, 雜項+仲介),兩者刻意分離
-  if ($('d_sell_ded')) $('d_sell_ded').textContent = fmtWan4(sellCostExclLandTax);
-  if ($('d_exempt')) $('d_exempt').textContent = fmtWan4(exempt3pct);
-  if ($('d_buyer_pct')) $('d_buyer_pct').textContent = sale > 0 ? fmtFlowPercent(buyerFixed / sale) : '— %';
-  if ($('d_seller_amt')) $('d_seller_amt').textContent = fmtWan4(agentFee);
+  if ($('d_sell_ded')) $('d_sell_ded').textContent = FwPrecision.format('d_sell_ded', fmtWan4(sellCostExclLandTax));
+  if ($('d_exempt')) $('d_exempt').textContent = FwPrecision.format('d_exempt', fmtWan4(exempt3pct));
+  if ($('d_buyer_pct')) $('d_buyer_pct').textContent = FwPrecision.format('d_buyer_pct', sale > 0 ? fmtFlowPercent(buyerFixed / sale) : '— %');
+  if ($('d_seller_amt')) $('d_seller_amt').textContent = FwPrecision.format('d_seller_amt', fmtWan4(agentFee));
   // 新增的小附註框
-  if ($('d_buy_taxfee')) $('d_buy_taxfee').textContent = fmtWan4(buyCost);
-  if ($('d_buyer_pct_amt')) $('d_buyer_pct_amt').textContent = fmtWan4(buyerByPct);
-  if ($('d_target_now')) $('d_target_now').textContent = fmtMoney(profit, 'wan');
+  if ($('d_buy_taxfee')) $('d_buy_taxfee').textContent = FwPrecision.format('d_buy_taxfee', fmtWan4(buyCost));
+  if ($('d_buyer_pct_amt')) $('d_buyer_pct_amt').textContent = FwPrecision.format('d_buyer_pct_amt', fmtWan4(buyerByPct));
+  if ($('d_target_now')) $('d_target_now').textContent = FwPrecision.format('d_target_now', fmtMoney(profit, 'wan'));
 
   // === Tab badge 顯示各區金額總計 ===
   // (Tab badges removed)
@@ -6161,7 +6170,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const finalCommission = sale > 0 ? finalCommAmount / sale : 0;
 
     // === 渲染 dashboard ===
-    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = FwPrecision.format(id, v); };
 
     // 第一排 4 格
     set('p_buyer_total', fmtWanShort(buyerTotal));
@@ -6848,7 +6857,7 @@ function setSafetyValue(id, text) {
     box.appendChild(span);
   }
   span.style.transform = '';
-  span.textContent = text;
+  span.textContent = FwPrecision.format(id, text);
   // 寫入後下一個 frame 量測縮放(等版面排好)
   if (typeof window.__fitSafetyValues === 'function') {
     requestAnimationFrame(() => window.__fitSafetyValues());
@@ -8296,6 +8305,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
 })();
 
 casePersistence.start();
+FwPrecision.start({ onWriteError: key => reportStorageIssue(key, false) });
 </script>
 </body>
 </html>
