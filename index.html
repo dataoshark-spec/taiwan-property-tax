@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.28B-direct">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28B-direct">
+<link rel="manifest" href="manifest.json?v=2026.09.28C-limit">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28C-limit">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28B-direct">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28C-limit">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -449,11 +449,12 @@
     box-sizing: border-box;
     background: #C44E4E;
     color: #FFFFFF;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 20px;
-    padding: 8px 20px;
-    border-radius: 22px;
+    font-family: "Microsoft JhengHei", sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.4;
+    padding: 14px 16px;
+    border-radius: 14px;
     box-shadow: 0 3px 12px rgba(0,0,0,0.22);
     white-space: nowrap;
     text-align: center;
@@ -464,6 +465,16 @@
     z-index: 9999;
   }
   .neg-toast.show { opacity: 1; visibility: visible; }
+  .neg-toast .notice-text { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; }
+  .neg-toast .notice-title, .neg-toast .notice-limit { display: inline-block; white-space: nowrap; line-height: 1.35; }
+  .neg-toast .notice-limit { font-size: 20px; font-weight: 600; }
+  @media (min-width: 768px) {
+    .neg-toast { font-size: 28px; padding: 16px 18px; }
+    .neg-toast .notice-limit { font-size: 24px; }
+  }
+  @media (max-width: 340px) {
+    .neg-toast { padding: 12px 16px; }
+  }
   /* 屋主目標稅後利潤:底色比照「屋主預計服務費%」(米黃)*/
   .presale-dash #p_target { background: #FFFEF8 !important; }
   .presale-dash #p_target:focus:not(.ck-completed-focus) { background: #F0F6FC !important; }
@@ -3535,7 +3546,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.28B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.28C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3616,9 +3627,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.28B-direct"></script>
-<script src="./precision.js?v=2026.09.28B-direct"></script>
-<script src="./view-state.js?v=2026.09.28B-direct"></script>
+<script src="./storage.js?v=2026.09.28C-limit"></script>
+<script src="./precision.js?v=2026.09.28C-limit"></script>
+<script src="./view-state.js?v=2026.09.28C-limit"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -3785,6 +3796,36 @@ function readStoredCase(key, ids) {
   }
   return state;
 }
+
+// 28C：只限制可編輯的金額，不限制百分比或衍生結果。
+const moneyInputLimit = (() => {
+  const wan = new Set(['d_sale','d_buy','d_buyer_fixed','d_target','pt_agent_other',
+    'p_sale','p_buy','p_first_price','p_paid','p_unpaid','p_buyer_fixed','p_target','p_pt_agent_other']);
+  const yuan = new Set(['ap_s_landtax','ap_s_sign','ap_s_log','ap_s_bank','ap_c_nonded',
+    'ap_c_tax','ap_c_stamp','ap_c_fee','ap_c_daishu','ap_c_escrow_inv','ap_c_lawpay',
+    'ap_c_utility','ap_c_decor','ap_c_agent','ap_c_misc','ap_c_nonded2','ap_o_landgain',
+    'pp_s_daishu','pp_s_ad','pp_s_other','pp_s_nonded','pp_c_daishu','pp_c_agent',
+    'pp_c_escrow_inv','pp_c_swap_inv','pp_c_other','pp_c_misc','pp_c_nonded']);
+  const unit = id => wan.has(id) ? 'wan' : yuan.has(id) ? 'yuan' : null;
+  function exceeds(id, value) {
+    const u = unit(id);
+    if (!u || value === null || value === undefined || value === '') return false;
+    if (typeof value === 'number') return Math.abs(value) > (u === 'wan' ? 99999999.9999 : 999999999999);
+    // 純數字在轉 Number／縮位前比十進位文字，避免上限附近被浮點取整掩蓋。
+    const match = String(value).trim().match(/^[+-]?(\d*\.?\d+|\d+\.)(?:[eE]([+-]?\d+))?$/);
+    if (!match) return false;
+    const [whole, fraction = ''] = match[1].split('.');
+    const all = whole + fraction, digits = all.replace(/^0+/, '');
+    if (!digits) return false;
+    const order = whole.length + Number(match[2] || 0) - (all.length - digits.length);
+    const maxOrder = u === 'wan' ? 8 : 12;
+    if (order !== maxOrder) return order > maxOrder;
+    const head = digits.slice(0, 12).padEnd(12, '0');
+    return head > '999999999999' || (head === '999999999999' && /[1-9]/.test(digits.slice(12)));
+  }
+  const safeValue = (id, value) => exceeds(id, value) ? '' : value;
+  return {unit, exceeds, safeValue};
+})();
 
 function normalizeNumericFieldValue(id, value) {
   if (typeof value !== 'string' && typeof value !== 'number') return '';
@@ -3973,8 +4014,10 @@ const casePersistence = (() => {
     modeFields[mode].forEach(id => {
       const cell = state.cells[fieldKey(mode, id)].value;
       const active = cell.epoch === epoch;
-      result[id] = active ? cell.value : emptyValue(id);
-      if (fees.includes(id) && (!active || cell.cleared)) cleared.push(id);
+      const overLimit = active && moneyInputLimit.exceeds(id, cell.value);
+      result[id] = active && !overLimit ? cell.value : overLimit ? '' : emptyValue(id);
+      if (fees.includes(id) && (!active || cell.cleared || overLimit ||
+          (result[id] === '' && moneyInputLimit.exceeds(id, cell.defaultValue)))) cleared.push(id);
     });
     const start = state.cells[startKey(mode)].value;
     result.__inputState = { version: 1, awaitingFirstInput: start.epoch !== epoch || !start.value, cleared };
@@ -3984,7 +4027,7 @@ const casePersistence = (() => {
     if (!view) return null;
     return Object.fromEntries(fees.map(id => {
       const cell = view.cells[fieldKey(modeOf(id), id)].value;
-      return [id, key === 'fwTax_lockState' ? cell.locked : cell.defaultValue];
+      return [id, key === 'fwTax_lockState' ? cell.locked : moneyInputLimit.safeValue(id, cell.defaultValue)];
     }));
   }
   function applySettings(state) {
@@ -3992,9 +4035,10 @@ const casePersistence = (() => {
       const cell = state.cells[fieldKey(modeOf(id), id)].value;
       const el = $(id);
       const button = document.querySelector('.lock-btn[data-lock-target="' + id + '"]');
-      el.setAttribute('data-default', cell.defaultValue);
-      if (el.dataset.cleared === '1') el.dataset.ph = cell.defaultValue;
-      else el.setAttribute('placeholder', cell.defaultValue);
+      const defaultValue = moneyInputLimit.safeValue(id, cell.defaultValue);
+      el.setAttribute('data-default', defaultValue);
+      if (el.dataset.cleared === '1') el.dataset.ph = defaultValue;
+      else el.setAttribute('placeholder', defaultValue);
       button.dataset.locked = cell.locked;
       button.innerHTML = cell.locked === 'true' ? lockedSvg() : LOCK_SVG.unlocked;
       el.classList.toggle('is-locked', cell.locked === 'true');
@@ -4086,7 +4130,7 @@ const casePersistence = (() => {
             if (id === el.id) return;
             const key = fieldKey(mode, id);
             const fee = copy(latest.cells[key].value);
-            fee.epoch = epoch; fee.value = fee.defaultValue; fee.cleared = false;
+            fee.epoch = epoch; fee.value = moneyInputLimit.safeValue(id, fee.defaultValue); fee.cleared = fee.value === '';
             patch[key] = fee; guards[key] = latest.cells[key].rev;
           });
           patch[startKey(mode)] = { epoch, value: true };
@@ -5333,11 +5377,47 @@ const negativeNoticeUI = (() => {
   const keyboard = document.getElementById('calcKb');
   const mode = () => document.body.classList.contains('is-preview') ? 'preview' : 'ready';
   let revision = 0, message = null, timer = null;
-  function clearance(){
-    // Reserve the same visible space before and during a notice; no late scroll.
-    return Math.ceil(toast.getBoundingClientRect().height) + 16;
+  // A hidden measurement node reserves notice space before editing starts.
+  const probe = document.createElement('div');
+  probe.className = 'neg-toast';
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.transition = 'none';
+  document.body.append(probe);
+  function content(node, kind, unit){
+    if (node.dataset.kind === kind && node.dataset.unit === (unit || '')) return;
+    node.dataset.kind = kind; node.dataset.unit = unit || '';
+    if (kind !== 'limit') { node.textContent = '不可輸入負數'; return; }
+    const wrap = document.createElement('div'); wrap.className = 'notice-text';
+    const title = document.createElement('span'); title.className = 'notice-title';
+    title.textContent = '輸入金額超過上限';
+    const line = document.createElement('span'); line.className = 'notice-limit';
+    line.textContent = unit === 'yuan' ? '最多 999,999,999,999 元' : '最多 99,999,999.9999 萬';
+    wrap.append(title, line); node.replaceChildren(wrap);
+  }
+  function fit(node){
+    node.style.maxWidth = Math.min(window.innerWidth - 24, keyboard.getBoundingClientRect().width - 24) + 'px';
+    const title = node.querySelector('.notice-title'), line = node.querySelector('.notice-limit');
+    if (!title || !line) return;
+    title.style.fontSize = ''; line.style.fontSize = '';
+    const style = getComputedStyle(node);
+    const available = parseFloat(style.maxWidth) - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const lowerWidth = line.getBoundingClientRect().width;
+    if (lowerWidth > available) line.style.fontSize = (parseFloat(getComputedStyle(line).fontSize) * available / lowerWidth) + 'px';
+    const titleWidth = title.getBoundingClientRect().width;
+    if (titleWidth) title.style.fontSize = (parseFloat(getComputedStyle(title).fontSize) * line.getBoundingClientRect().width / titleWidth) + 'px';
+  }
+  function clearance(input){
+    content(probe, 'negative'); fit(probe);
+    let height = probe.getBoundingClientRect().height;
+    const unit = input && moneyInputLimit.unit(input.id);
+    if (unit) {
+      content(probe, 'limit', unit); fit(probe);
+      height = Math.max(height, probe.getBoundingClientRect().height);
+    }
+    return Math.ceil(height) + 16;
   }
   function layout(){
+    fit(toast);
     const viewport = window.visualViewport;
     const viewportTop = viewport?.offsetTop || 0;
     const safeInset = parseFloat(getComputedStyle(document.body, '::before').height) || 0;
@@ -5360,11 +5440,13 @@ const negativeNoticeUI = (() => {
     toast.setAttribute('aria-hidden', 'false');
     toast.classList.add('show');
   }
-  function show(el){
-    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now() + 2000};
+  function show(el, kind = 'negative'){
+    const duration = kind === 'limit' ? 4000 : 2000;
+    content(toast, kind, moneyInputLimit.unit(el.id));
+    message = {serial: ++revision, field: el.id, mode: mode(), until: performance.now() + duration};
     const serial = message.serial;
     clearTimeout(timer);
-    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, 2000);
+    timer = setTimeout(() => { if (message?.serial === serial) clear(); }, duration);
     render();
   }
   function closed(){ render(); }
@@ -5381,6 +5463,12 @@ function showNegativeInputWarning(el) {
   el.__negTimer = setTimeout(() => el.classList.remove('neg-blocked'), 1200);
   negativeNoticeUI.show(el);
 }
+function showMoneyInputWarning(el) {
+  el.classList.add('neg-blocked');
+  clearTimeout(el.__negTimer);
+  el.__negTimer = setTimeout(() => el.classList.remove('neg-blocked'), 1200);
+  negativeNoticeUI.show(el, 'limit');
+}
 // 非計算機來源的保險防護；計算機在提交前已先檢查最終數字。
 document.addEventListener('input', function(e) {
   const el = e.target;
@@ -5394,6 +5482,18 @@ document.addEventListener('input', function(e) {
     el.dataset.ckOrigValue = '';
     showNegativeInputWarning(el);
   }
+}, true);
+
+// 自訂鍵盤以外的輸入事件也在重算／保存前清空超額金額。
+document.addEventListener('input', function(event) {
+  const el = event.target;
+  if (!el || el.tagName !== 'INPUT' || !moneyInputLimit.exceeds(el.id, el.value)) return;
+  el.value = ''; el.dataset.ckOrigValue = '';
+  if (LOCKED_DEFAULT_FIELDS.ready.includes(el.id) || LOCKED_DEFAULT_FIELDS.preview.includes(el.id)) {
+    setCostClearedState(el, true);
+    event.__keepCostCleared = true;
+  }
+  showMoneyInputWarning(el);
 }, true);
 
 // === 貸款成數只驗證已提交數值；計算機輸入期間不截斷算式 ===
@@ -7165,7 +7265,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       const rowHeight = parseFloat(gridStyle.gridAutoRows) || 56;
       const currentGap = parseFloat(gridStyle.rowGap) || 8;
       const chromeHeight = kb.getBoundingClientRect().height-rowHeight*6-currentGap*5;
-      const noticeGap = negativeNoticeUI.clearance();
+      const noticeGap = negativeNoticeUI.clearance(input);
       const maxKeyboardHeight = visibleBottom-visibleTop-bounds.height-12-noticeGap;
       const gap = maxKeyboardHeight < chromeHeight+44*6+8*5 ? 4 : 8;
       const row = Math.min(56,Math.max(28,Math.floor((maxKeyboardHeight-chromeHeight-gap*5)/6)));
@@ -7413,6 +7513,17 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     scrollIntoView(targetInput.closest('.pg-pct-input') || targetInput);
     return false;
   }
+  function moneyResultIsValid(value){
+    if (!targetInput || !moneyInputLimit.unit(targetInput.id)) return true;
+    const literal = expr.replace(/[+\-*/.]+$/, '');
+    if (!moneyInputLimit.exceeds(targetInput.id, literal) && !moneyInputLimit.exceeds(targetInput.id, value)) return true;
+    clearInputError();
+    const input = targetInput;
+    expr = ''; touched = true;
+    dispatchCommittedValue(input, '', true, true);
+    showMoneyInputWarning(input);
+    return false;
+  }
   function loanResultIsValid(value){
     if (!targetInput) return true;
     if (targetInput.id !== 'pt_loan_rate') {
@@ -7434,7 +7545,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       finalVal = touched ? '' : (targetInput.dataset.ckOrigValue || '');
     } else {
       const v = evalExpr(expr);
-      if (!loanResultIsValid(v)) return false;
+      if (!moneyResultIsValid(v) || !loanResultIsValid(v)) return false;
       finalVal = (v !== null) ? fmtNum(v) : '';
     }
     if (finalVal !== '' && Number(finalVal) < 0 && targetInput.id !== 'd_target' && targetInput.id !== 'p_target') {
@@ -7582,7 +7693,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     else if (k === 'back'){ expr = expr.slice(0, -1); }
     else if (k === '='){
       const v = evalExpr(expr);
-      if (!loanResultIsValid(v)) return;
+      if (!moneyResultIsValid(v) || !loanResultIsValid(v)) return;
       if (v !== null) expr = fmtNum(v);
     }
     else if (k === '.'){
