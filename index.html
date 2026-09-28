@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.28D-decimal">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28D-decimal">
+<link rel="manifest" href="manifest.json?v=2026.09.28E-rounding">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28E-rounding">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28D-decimal">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28E-rounding">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3546,7 +3546,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.28D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.28E</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3627,9 +3627,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.28D-decimal"></script>
-<script src="./precision.js?v=2026.09.28D-decimal"></script>
-<script src="./view-state.js?v=2026.09.28D-decimal"></script>
+<script src="./storage.js?v=2026.09.28E-rounding"></script>
+<script src="./precision.js?v=2026.09.28E-rounding"></script>
+<script src="./view-state.js?v=2026.09.28E-rounding"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -3658,11 +3658,11 @@ function truncDisplayInteger(value) {
   const tolerance = Number.EPSILON * Math.max(1, Math.abs(value)) * 4;
   return Math.trunc(Math.abs(value - nearest) <= tolerance ? nearest : value);
 }
-// 金額只在顯示時取整，沿用既有 Math.round 的負半元方向。
+// 金額只在顯示時取整；正負半元皆向遠離 0 的方向取整。
 // 元／萬共用同一筆原值；取整後的負零顯示為 0，不回寫計算或保存值。
 function fmtMoney(value, unit = 'yuan') {
   if (!Number.isFinite(value)) return '—';
-  const roundedYuan = Math.round(value) || 0;
+  const roundedYuan = (value < 0 ? -Math.round(-value) : Math.round(value)) || 0;
   if (unit === 'yuan') return roundedYuan.toLocaleString();
   // 直接移動整元文字的小數位，避免大金額換算成萬後再次產生浮點尾差。
   const digits = Math.abs(roundedYuan).toLocaleString('en-US', { useGrouping: false, maximumFractionDigits: 0 }).padStart(5, '0');
