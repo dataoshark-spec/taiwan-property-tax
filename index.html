@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.28C-limit">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28C-limit">
+<link rel="manifest" href="manifest.json?v=2026.09.28D-decimal">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28D-decimal">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28C-limit">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28D-decimal">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -2287,7 +2287,7 @@
   .pg-value .pt-input:hover { background: #F2F1EB; }
   .pg-value .pt-input:focus:not(.ck-completed-focus):not(.ck-bind) { background: #1F2F2A; color: #fff; }
 
-  /* 仲介其它：閒置時顯示四位，原始 input 值與草稿保持不變。 */
+  /* 仲介其它：新輸入至多四位；未重編的舊值完整顯示，補零只影響外觀。 */
   .pt-wan-wrap { position: relative; display: inline-block; width: 88px; height: 22px; vertical-align: middle; }
   .pg-value .pt-wan-wrap > .pt-input { width: 100%; transition: background .15s; }
   .pt-wan-text { position: absolute; inset: 1px 8px; pointer-events: none; color: #1F2F2A; font-size: 13px; font-weight: 600; line-height: 20px; text-align: right; white-space: nowrap; }
@@ -3546,7 +3546,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.28C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.28D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3627,9 +3627,9 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.28C-limit"></script>
-<script src="./precision.js?v=2026.09.28C-limit"></script>
-<script src="./view-state.js?v=2026.09.28C-limit"></script>
+<script src="./storage.js?v=2026.09.28D-decimal"></script>
+<script src="./precision.js?v=2026.09.28D-decimal"></script>
+<script src="./view-state.js?v=2026.09.28D-decimal"></script>
 <script>
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
@@ -3825,6 +3825,141 @@ const moneyInputLimit = (() => {
   }
   const safeValue = (id, value) => exceeds(id, value) ? '' : value;
   return {unit, exceeds, safeValue};
+})();
+
+// Six-field keyboard arithmetic only. This module never reads/writes the DOM or storage.
+const FWDecimalInput = (() => {
+  'use strict';
+  const ids = Object.freeze(['d_buyer_rate', 'd_seller_rate', 'p_buyer_rate',
+    'p_seller_rate', 'pt_agent_other', 'p_pt_agent_other']);
+  const fields = new Set(ids);
+  const limits = Object.freeze({ expressionLength: 2048, operations: 512,
+    depth: 64, intermediateBits: 8192, negativeDecimalPlaces: 324 });
+  const abs = n => n < 0n ? -n : n;
+  function failure(code) { const error = new Error(code); error.code = code; throw error; }
+  function gcd(a, b) {
+    a = abs(a); b = abs(b);
+    while (b !== 0n) { const remainder = a % b; a = b; b = remainder; }
+    return a || 1n;
+  }
+  function fraction(n, d = 1n) {
+    if (d === 0n) failure('DIVISION_BY_ZERO');
+    if (d < 0n) { n = -n; d = -d; }
+    if (n === 0n) return { n: 0n, d: 1n };
+    const common = gcd(n, d);
+    n /= common; d /= common;
+    if (abs(n).toString(2).length > limits.intermediateBits ||
+        d.toString(2).length > limits.intermediateBits) failure('RESOURCE_LIMIT');
+    return { n, d };
+  }
+  function decimal(text) {
+    const [whole = '0', tail = ''] = text.split('.');
+    return fraction(BigInt((whole || '0') + tail), 10n ** BigInt(tail.length));
+  }
+  function add(a, b, subtract) {
+    const common = gcd(a.d, b.d), left = a.d / common, right = b.d / common;
+    return fraction(a.n * right + (subtract ? -b.n : b.n) * left, left * b.d);
+  }
+  function multiply(a, b, divide) {
+    if (divide) {
+      if (b.n === 0n) failure('DIVISION_BY_ZERO');
+      b = { n: b.d, d: b.n };
+    }
+    const first = gcd(a.n, b.d), second = gcd(b.n, a.d);
+    return fraction((a.n / first) * (b.n / second), (a.d / second) * (b.d / first));
+  }
+  function parse(expression) {
+    if (typeof expression !== 'string') failure('INVALID_SYNTAX');
+    if (expression.length > limits.expressionLength) failure('RESOURCE_LIMIT');
+    // Match the existing keypad's unfinished trailing-operator/dot behavior.
+    const source = expression.replace(/[+\-*/.]+$/, '');
+    if (!source) failure('EMPTY_EXPRESSION');
+    if (!/^[\d.+\-*/%()]+$/.test(source) || /\+\+|--/.test(source)) failure('INVALID_SYNTAX');
+    const tokens = source.match(/(?:\d+(?:\.\d*)?|\.\d+)|[+\-*/%()]/g) || [];
+    if (tokens.join('') !== source) failure('INVALID_SYNTAX');
+    let position = 0, depth = 0, operations = 0;
+    function operation() { if (++operations > limits.operations) failure('RESOURCE_LIMIT'); }
+    function primary() {
+      if (++depth > limits.depth) failure('RESOURCE_LIMIT');
+      try {
+        const token = tokens[position++];
+        if (token === '+' || token === '-') {
+          operation(); const value = primary();
+          return token === '-' ? { n: -value.n, d: value.d } : value;
+        }
+        if (token === '(') {
+          const value = sum();
+          if (tokens[position++] !== ')') failure('INVALID_SYNTAX');
+          return value;
+        }
+        if (token === undefined || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token)) failure('INVALID_SYNTAX');
+        let value = decimal(token);
+        if (tokens[position] === '%') {
+          // Existing evalExpr rewrites only a digit-led complete decimal followed by %.
+          if (!/^\d+(?:\.\d+)?$/.test(token)) failure('INVALID_SYNTAX');
+          position++; operation(); value = fraction(value.n, value.d * 100n);
+        }
+        return value;
+      } finally { depth--; }
+    }
+    function product() {
+      let value = primary();
+      while (tokens[position] === '*' || tokens[position] === '/') {
+        const operator = tokens[position++]; operation();
+        value = multiply(value, primary(), operator === '/');
+      }
+      return value;
+    }
+    function sum() {
+      let value = product();
+      while (tokens[position] === '+' || tokens[position] === '-') {
+        const operator = tokens[position++]; operation();
+        value = add(value, product(), operator === '-');
+      }
+      return value;
+    }
+    const value = sum();
+    if (position !== tokens.length) failure('INVALID_SYNTAX');
+    return value;
+  }
+  function plain(quotient, places) {
+    const negative = quotient < 0n, digits = abs(quotient).toString().padStart(places + 1, '0');
+    const whole = digits.slice(0, -places), tail = digits.slice(-places).replace(/0+$/, '');
+    return (negative ? '-' : '') + whole + (tail ? '.' + tail : '');
+  }
+  function display(value) {
+    let places = 4, scaled = value.n * 10000n, quotient = scaled / value.d;
+    // A negative intermediate must stay visibly negative until commit rejects it.
+    // Continue calculations from this displayed text, never an undisplayed rational.
+    while (value.n < 0n && quotient === 0n && places < limits.negativeDecimalPlaces) {
+      places++; scaled *= 10n; quotient = scaled / value.d;
+    }
+    if (value.n < 0n && quotient === 0n) failure('NEGATIVE_UNDERFLOW');
+    return plain(quotient, places);
+  }
+  function evaluate(expression, options = {}) {
+    let negative = false, zero = false, exceedsLimit = false;
+    try {
+      if (!options || typeof options !== 'object' || Array.isArray(options)) failure('INVALID_OPTIONS');
+      let maximum = null;
+      if (options.max !== undefined) {
+        if (typeof options.max !== 'string' || options.max.length > limits.expressionLength ||
+            !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(options.max)) failure('INVALID_LIMIT');
+        maximum = decimal(options.max);
+      }
+      const value = parse(expression);
+      negative = value.n < 0n; zero = value.n === 0n;
+      if (maximum) exceedsLimit = abs(value.n) * maximum.d > maximum.n * value.d;
+      const text = display(value), number = Number(text);
+      if (!Number.isFinite(number)) failure('NON_FINITE_RESULT');
+      if (negative && !(number < 0)) failure('NEGATIVE_UNDERFLOW');
+      return { ok: true, text, number, negative, zero, exceedsLimit };
+    } catch (error) {
+      return { ok: false, error: error && error.code || 'INVALID_SYNTAX',
+        text: '', number: null, negative, zero, exceedsLimit };
+    }
+  }
+  return Object.freeze({ ids, limits, handles: id => fields.has(id), evaluate });
 })();
 
 function normalizeNumericFieldValue(id, value) {
@@ -4847,17 +4982,31 @@ function renderFlow(d) {
 function renderPartyWanInput(id) {
   return `<span class="pt-wan-wrap"><input type="text" class="pt-input" id="${id}" aria-labelledby="${id}-label" value="${readPartyField(id)}" inputmode="numeric"><span class="pt-wan-text" aria-hidden="true"></span></span>`;
 }
+function formatPartyWanInputValue(raw) {
+  const text = String(raw).trim();
+  if (text === '' || !Number.isFinite(Number(text))) return '';
+  if (/^-?(?:\d+\.?\d*|\.\d+)[eE][+-]?\d+$/.test(text)) return text;
+  const parts = text.match(/^(-?)(\d*)(?:\.(\d*))?$/);
+  if (!parts || (!parts[2] && !parts[3])) return '';
+  return parts[1] + (parts[2] || '0') + '.' + (parts[3] || '').padEnd(4, '0');
+}
 function refreshPartyWanDisplays() {
   document.querySelectorAll('.pt-wan-wrap').forEach(wrap => {
     const input = wrap.querySelector('input');
     const display = wrap.querySelector('.pt-wan-text');
     if (!input || !display) return;
-    const raw = input.value.trim();
-    const value = Number(raw);
-    const formatted = raw !== '' && Number.isFinite(value) ? (Math.round(value * 10000) / 10000).toFixed(4) : '';
+    // Old saved digits stay intact until this field is actually edited and committed.
+    const formatted = formatPartyWanInputValue(input.value);
     if (display.textContent !== formatted) display.textContent = formatted;
     wrap.classList.toggle('has-amount', formatted !== '');
     display.style.fontSize = '13px';
+    wrap.style.width = '88px';
+    const label = wrap.closest('.pg-row')?.querySelector('.pg-label');
+    if (display.clientWidth > 0 && label && display.scrollWidth > display.clientWidth) {
+      const labelReserve = Math.max(32, (parseFloat(getComputedStyle(label).fontSize) || 13) * 2 + 2);
+      const room = 88 + Math.max(0, label.clientWidth - labelReserve);
+      wrap.style.width = Math.min(room, Math.max(88, display.scrollWidth + 16)) + 'px';
+    }
     const available = display.clientWidth;
     if (available > 0 && display.scrollWidth > available) {
       display.style.fontSize = Math.max(1, Math.floor(13 * available / display.scrollWidth * 10) / 10) + 'px';
@@ -7513,10 +7662,12 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     scrollIntoView(targetInput.closest('.pg-pct-input') || targetInput);
     return false;
   }
-  function moneyResultIsValid(value){
+  function moneyResultIsValid(value, decimalResult=null){
     if (!targetInput || !moneyInputLimit.unit(targetInput.id)) return true;
     const literal = expr.replace(/[+\-*/.]+$/, '');
-    if (!moneyInputLimit.exceeds(targetInput.id, literal) && !moneyInputLimit.exceeds(targetInput.id, value)) return true;
+    const exceeds = decimalResult?.exceedsLimit === true || (!decimalResult?.ok &&
+      (moneyInputLimit.exceeds(targetInput.id, literal) || moneyInputLimit.exceeds(targetInput.id, value)));
+    if (!exceeds) return true;
     clearInputError();
     const input = targetInput;
     expr = ''; touched = true;
@@ -7535,6 +7686,11 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     return true;
   }
 
+  function evaluatePreciseInput(){
+    if (!targetInput || !FWDecimalInput.handles(targetInput.id)) return null;
+    return FWDecimalInput.evaluate(expr, moneyInputLimit.unit(targetInput.id) === 'wan'
+      ? {max:'99999999.9999'} : {});
+  }
   // 把目前 expr 算好寫回欄位,並觸發計算流程
   function commitToField(){
     if (!targetInput) return;
@@ -7544,9 +7700,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       // touched=true 是使用者刻意按 C/退格清空 → 寫入空值,讓欄位真的清掉
       finalVal = touched ? '' : (targetInput.dataset.ckOrigValue || '');
     } else {
-      const v = evalExpr(expr);
-      if (!moneyResultIsValid(v) || !loanResultIsValid(v)) return false;
-      finalVal = (v !== null) ? fmtNum(v) : '';
+      const precise = evaluatePreciseInput();
+      const v = precise ? (precise.ok ? precise.number : null) : evalExpr(expr);
+      if (!moneyResultIsValid(v, precise) || !loanResultIsValid(v)) return false;
+      finalVal = precise ? precise.text : ((v !== null) ? fmtNum(v) : '');
     }
     if (finalVal !== '' && Number(finalVal) < 0 && targetInput.id !== 'd_target' && targetInput.id !== 'p_target') {
       finalVal = '';
@@ -7692,9 +7849,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     if (k === 'C'){ expr = ''; }
     else if (k === 'back'){ expr = expr.slice(0, -1); }
     else if (k === '='){
-      const v = evalExpr(expr);
-      if (!moneyResultIsValid(v) || !loanResultIsValid(v)) return;
-      if (v !== null) expr = fmtNum(v);
+      const precise = evaluatePreciseInput();
+      const v = precise ? (precise.ok ? precise.number : null) : evalExpr(expr);
+      if (!moneyResultIsValid(v, precise) || !loanResultIsValid(v)) return;
+      if (v !== null) expr = precise ? precise.text : fmtNum(v);
     }
     else if (k === '.'){
       const currentOperand = expr.split(/[+*/-]/).pop();
