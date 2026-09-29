@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.29B-agency-tax">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29B-agency-tax">
+<link rel="manifest" href="manifest.json?v=2026.09.29C-storage">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29C-storage">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29B-agency-tax">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29C-storage">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -138,13 +138,18 @@
   .restore-btn:active { background: rgba(255,255,255,0.2); transform: scale(0.97); }
   .toast {
     position: fixed;
-    bottom: 24px; left: 50%;
+    bottom: max(24px, env(safe-area-inset-bottom)); left: 50%;
     transform: translateX(-50%) translateY(100px);
     background: #1A1A1A; color: #fff;
     padding: 10px 18px;
-    border-radius: 24px;
-    font-size: 13px;
-    z-index: 100;
+    border-radius: 14px;
+    font-size: 16px;
+    line-height: 1.5;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    text-align: center;
+    z-index: 1000;
     opacity: 0;
     transition: opacity 0.2s, transform 0.25s;
     pointer-events: none;
@@ -3055,6 +3060,8 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
 .agency-tax-help { font-size: 12px; color: #777; line-height: 1.65; margin: 8px 0 0; }
 #agencyTaxError { font-size: 13px; line-height: 1.5; color: #b43333; margin: 8px 0 0; }
 #agencyTaxError:empty { display: none; }
+#agencyTaxError.is-storage-error { width: max-content; max-width: 100%; box-sizing: border-box; margin: 12px auto 0; padding: 10px 14px; border-radius: 14px; background: #1a1a1a; color: #fff; font-size: 16px; line-height: 1.5; text-align: center; }
+#agencyTaxError.is-storage-error span { display: block; }
 .agency-tax-dialog button { font: inherit; cursor: pointer; touch-action: manipulation; }
 .agency-tax-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 12px; padding: 10px 16px 14px; position: sticky; bottom: 0; background: #fff; box-shadow: 0 -10px 14px -10px #00000029; }
 .agency-tax-actions button { min-width: 0; min-height: 44px; padding: 9px 4px; border: 1px solid #dcdcdc; border-radius: 12px; background: #fff; color: #777; font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -3621,7 +3628,7 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.29B</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.29C</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3728,9 +3735,9 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.09.29B-agency-tax"></script>
-<script src="./precision.js?v=2026.09.29B-agency-tax"></script>
-<script src="./view-state.js?v=2026.09.29B-agency-tax"></script>
+<script src="./storage.js?v=2026.09.29C-storage"></script>
+<script src="./precision.js?v=2026.09.29C-storage"></script>
+<script src="./view-state.js?v=2026.09.29C-storage"></script>
 <script>
 /* Independent per-mode agency-tax preferences; inline after the unchanged storage engine. */
 (function (global) {
@@ -3833,11 +3840,11 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
     if (!validMode(mode)) return { ok: false, reason: 'mode', value: null };
     const parsed = parse(raw);
     if (!parsed.ok) return { ok: false, reason: 'invalid', value: get(mode), message: parsed.message };
-    if (!readable) return { ok: false, reason: 'read', value: get(mode) };
-    if (!validRevision(expectedRev)) return { ok: false, reason: 'revision', value: get(mode) };
+    // Retry the read on every explicit Apply; a transient failure is not permanent.
     let latest;
     try { latest = readLatest(); }
     catch (_) { readable = false; return { ok: false, reason: 'read', value: get(mode) }; }
+    if (!validRevision(expectedRev)) return { ok: false, reason: 'revision', value: latest[mode].value };
     if (latest[mode].rev[0] !== expectedRev[0] || latest[mode].rev[1] !== expectedRev[1]) {
       return { ok: false, reason: 'conflict', value: latest[mode].value };
     }
@@ -3952,20 +3959,10 @@ const PARTY_FIELD_VALUES = { pt_loan_rate: '80', pt_agent_other: '0', p_pt_agent
 const blockedStorageKeys = new Set();
 const storageIssueNotices = new Map();
 const failedCaseLoads = new Set();
-const pendingCaseWriteNotices = new Set();
+// Ordinary calculation/preferences failures are diagnostic only. The dedicated
+// rate dialog reports a failed Apply and keeps the previously adopted rate.
 function reportStorageIssue(key, reading) {
-  const token = key + (reading ? ':read' : ':write');
-  const now = Date.now();
-  if (storageIssueNotices.has(token) && now - storageIssueNotices.get(token) < 2000) return;
-  storageIssueNotices.set(token, now);
-  if (!reading && (key === caseStorageKey('ready') || key === caseStorageKey('preview'))) {
-    pendingCaseWriteNotices.add(key);
-    setTimeout(showPendingCaseNotice, 0);
-    return;
-  }
-  setTimeout(() => showToast(reading
-    ? '資料讀取失敗，原資料已保留，請重新開啟'
-    : '資料未能儲存，請勿關閉 APP'), 0);
+  storageIssueNotices.set(key + (reading ? ':read' : ':write'), Date.now());
 }
 function readStoredText(key) {
   try { return localStorage.getItem(key); }
@@ -3973,7 +3970,7 @@ function readStoredText(key) {
 }
 function writeStoredText(key, text) {
   if (blockedStorageKeys.has(key)) { reportStorageIssue(key, true); return false; }
-  try { localStorage.setItem(key, text); pendingCaseWriteNotices.delete(key); return true; }
+  try { localStorage.setItem(key, text); return true; }
   catch(e) { reportStorageIssue(key, false); return false; }
 }
 function parseSavedObject(json) {
@@ -4020,13 +4017,6 @@ function caseStorageKey(verKey) {
 }
 function markUnreadableCase(key) {
   failedCaseLoads.add(key);
-}
-function showPendingCaseNotice() {
-  const key = caseStorageKey(currentVerKey());
-  if (!pendingCaseWriteNotices.has(key)) return;
-  pendingCaseWriteNotices.delete(key);
-  // 僅通知實際儲存失敗；隱藏模式留待切入時再說明。
-  showToast('資料未能儲存，請勿關閉 APP');
 }
 function readStoredCase(key, ids) {
   if (window.__fwPersistence) return window.__fwPersistence.case(key);
@@ -4318,7 +4308,37 @@ const casePersistence = (() => {
   const emptyValue = id => id === 'pt_loan_rate' ? '80' : isPartyField(id) ? '0' : '';
   const copy = value => JSON.parse(JSON.stringify(value));
   let store, view, started = false, applying = false, refreshPending = false;
-  let refreshQueued = false;
+  let refreshQueued = false, localOnly = false, localRevision = 0;
+
+  function temporaryState() {
+    // No readable baseline: use empty inputs and factory fee defaults in memory.
+    // Never replace the unreadable persistent record with this temporary state.
+    const cells = {};
+    const put = (key, value) => { cells[key] = { value, rev: [0, 'seed'] }; };
+    modes.forEach(mode => {
+      put(epochKey(mode), 'initial');
+      put(startKey(mode), { epoch: 'initial', value: false });
+      modeFields[mode].forEach(id => {
+        const value = { epoch: 'initial', value: emptyValue(id), cleared: fees.includes(id) };
+        if (fees.includes(id)) Object.assign(value, { defaultValue: factory[id], source: 'factory', locked: 'true' });
+        put(fieldKey(mode, id), value);
+      });
+    });
+    return { cells };
+  }
+  function useTemporaryState() {
+    localOnly = true;
+    refreshPending = false;
+    if (!view) view = temporaryState();
+    reportStorageIssue('fwTax_store_v1', false);
+    return view;
+  }
+  function saveTemporary(patch) {
+    for (const key of Object.keys(patch)) {
+      view.cells[key] = { value: copy(patch[key]), rev: [++localRevision, 'temporary'] };
+    }
+    return true; // Accepted for this page only, not a persistent-write result.
+  }
 
   function seed() {
     // An old page cannot participate in this protocol. Require a stable read of
@@ -4375,16 +4395,20 @@ const casePersistence = (() => {
     });
     return state;
   }
-  function fail(mode, reading = false) {
-    if (reading) return; // Keep the existing silent empty-case read-failure policy.
-    reportStorageIssue(caseStorageKey(mode || currentVerKey()), false);
+  function fail() {
+    // A concurrent edit keeps the existing revision guard. It is not a storage fault.
+    showToast('其他視窗已更新，請重新操作');
   }
   try {
     store = window.FwLocalStore.create({ namespace: 'fwTax_store_v1', seed });
     view = validate(store.read());
-  } catch (error) { view = null; }
+  } catch (error) { useTemporaryState(); }
 
-  function readFresh() { return validate(store.read()); }
+  function readFresh() {
+    if (localOnly) return view;
+    try { return validate(store.read()); }
+    catch (error) { return useTemporaryState(); }
+  }
   function getEpoch(state, mode) { return state.cells[epochKey(mode)].value; }
   function caseState(state, mode) {
     if (!state) return null;
@@ -4452,12 +4476,15 @@ const casePersistence = (() => {
   }
   function editing() { return document.getElementById('calcKb')?.classList.contains('show'); }
   function refresh() {
-    if (!started || applying) return;
+    if (!started || applying || localOnly) return;
     if (editing()) { refreshPending = true; return; }
-    try { apply(readFresh()); refreshPending = false; }
-    catch (error) { refreshPending = true; }
+    const latest = readFresh();
+    if (localOnly) return; // Do not overwrite the current page after a storage fault.
+    apply(latest);
+    refreshPending = false;
   }
   function scheduleRefresh() {
+    if (localOnly) return;
     refreshPending = true;
     if (refreshQueued) return;
     refreshQueued = true;
@@ -4469,7 +4496,7 @@ const casePersistence = (() => {
     return result;
   }
   function save(mode, patch, guards) {
-    if (!store || !view) { fail(mode); return false; }
+    if (localOnly) return saveTemporary(patch);
     try {
       const result = store.commit(patch, guards);
       if (!result.ok) { fail(mode); scheduleRefresh(); return false; }
@@ -4477,10 +4504,12 @@ const casePersistence = (() => {
       // Advance the visible baseline only for fields this page actually changed.
       // Remote fields stay on their visible revision until the UI can refresh.
       Object.keys(patch).forEach(key => { view.cells[key] = copy(next.cells[key]); });
-      pendingCaseWriteNotices.delete(caseStorageKey(mode));
       scheduleRefresh();
       return true;
-    } catch (error) { fail(mode); return false; }
+    } catch (error) {
+      useTemporaryState();
+      return saveTemporary(patch);
+    }
   }
   function captureField(mode, id, state = view) {
     const previous = copy(state.cells[fieldKey(mode, id)].value);
@@ -4502,7 +4531,7 @@ const casePersistence = (() => {
     const oldStart = view.cells[startKey(mode)].value;
     const epoch = getEpoch(view, mode);
     if (oldStart.epoch !== epoch || !oldStart.value) {
-      try {
+      {
         const latest = readFresh();
         const latestStart = latest.cells[startKey(mode)].value;
         if (getEpoch(latest, mode) === epoch && (latestStart.epoch !== epoch || !latestStart.value)) {
@@ -4516,7 +4545,7 @@ const casePersistence = (() => {
           patch[startKey(mode)] = { epoch, value: true };
           guards[startKey(mode)] = latest.cells[startKey(mode)].rev;
         }
-      } catch (error) { fail(mode); return; }
+      }
     }
     save(mode, patch, guards);
   }
@@ -4536,24 +4565,24 @@ const casePersistence = (() => {
     return ok;
   }
   function beforeReset(mode, restoring = false) {
-    if (!view) { fail(mode); return false; }
-    try {
-      const latest = readFresh();
-      const keys = [epochKey(mode), ...modeFields[mode].map(id => fieldKey(mode, id))];
-      if (restoring && keys.some(key => JSON.stringify(view.cells[key].rev) !== JSON.stringify(latest.cells[key].rev))) {
-        clearSnapshots[mode] = null;
-        apply(latest);
-        fail(mode);
-        return false;
-      }
-      apply(latest, true);
-      return true;
+    if (localOnly) return true;
+    const latest = readFresh();
+    if (localOnly) return true;
+    const keys = [epochKey(mode), ...modeFields[mode].map(id => fieldKey(mode, id))];
+    if (restoring && keys.some(key => JSON.stringify(view.cells[key].rev) !== JSON.stringify(latest.cells[key].rev))) {
+      clearSnapshots[mode] = null;
+      apply(latest);
+      fail();
+      return false;
     }
-    catch (error) { fail(mode); return false; }
+    apply(latest, true);
+    return true;
   }
   function reset(mode, restore) {
     if (!view) { fail(mode); return false; }
-    const epoch = crypto.randomUUID();
+    const epoch = localOnly ? 'temporary-' + (++localRevision)
+      : typeof crypto.randomUUID === 'function' ? crypto.randomUUID()
+      : Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
     const patch = { [epochKey(mode)]: epoch, [startKey(mode)]: { epoch, value: !initialClearState[mode] } };
     if (restore) {
       modeFields[mode].forEach(id => {
@@ -4564,8 +4593,10 @@ const casePersistence = (() => {
     }
     const ok = save(mode, patch, expected(mode, modeFields[mode]));
     if (!ok) {
-      try { apply(readFresh(), true); }
-      catch (error) { apply(view, true); }
+      const latest = readFresh();
+      // A rejected concurrent reset must also roll back the already-cleared DOM
+      // when the follow-up read falls back to this page's previous baseline.
+      apply(latest, true);
     }
     return ok;
   }
@@ -7048,13 +7079,29 @@ $('collapseBtn').addEventListener('click', () => {
 // 註:clearSnapshots / LOCKED_DEFAULT_FIELDS 已提前宣告於版本切換 IIFE 之前
 
 let caseToastHideTimer = null;
+let caseToastFrame = null;
+function positionCaseToast() {
+  const toast = $('toast');
+  if (!toast.classList.contains('show')) return;
+  const viewport = window.visualViewport;
+  let bottomEdge = viewport ? Math.min(window.innerHeight, viewport.offsetTop + viewport.height) : window.innerHeight;
+  const keyboard = $('calcKb');
+  const opened = keyboard && keyboard.classList.contains('show');
+  if (opened) bottomEdge = Math.min(bottomEdge, keyboard.getBoundingClientRect().top);
+  const offset = Math.max(0, window.innerHeight - bottomEdge);
+  toast.style.bottom = offset > 0 ? (offset + (opened ? 8 : 24)) + 'px' : 'max(24px, env(safe-area-inset-bottom))';
+  caseToastFrame = requestAnimationFrame(positionCaseToast);
+}
 function showToast(msg) {
   const toast = $('toast');
   clearTimeout(caseToastHideTimer);
   toast.textContent = msg;
   toast.classList.add('show');
+  cancelAnimationFrame(caseToastFrame);
+  positionCaseToast();
   caseToastHideTimer = setTimeout(() => {
     toast.classList.remove('show');
+    cancelAnimationFrame(caseToastFrame);
     caseToastHideTimer = null;
   }, 1500);
 }
@@ -7096,7 +7143,6 @@ function updateBtnVisibility() {
   const verKey = currentVerKey();
   const hasSnapshot = clearSnapshots[verKey] !== null;
   restoreBtn.style.display = hasSnapshot ? '' : 'none';
-  setTimeout(showPendingCaseNotice, 0);
 }
 // 保留舊名稱供既有呼叫使用(行為改為更新按鈕顯隱)
 function resetClearBtn() { updateBtnVisibility(); }
@@ -8890,8 +8936,18 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     element.focus({ preventScroll: true });
   }
   function showError(message) {
+    error.classList.remove('is-storage-error');
     error.textContent = message || '';
     input.setAttribute('aria-invalid', message ? 'true' : 'false');
+    if (editor) layoutEditor();
+  }
+  function showSaveError(first, second) {
+    // Inside the native dialog's top layer; no second toast behind the dialog.
+    error.classList.add('is-storage-error');
+    error.replaceChildren(...[first, second].map(text => {
+      const line = document.createElement('span'); line.textContent = text; return line;
+    }));
+    input.setAttribute('aria-invalid', 'false');
     if (editor) layoutEditor();
   }
   function refreshButtons() {
@@ -8956,7 +9012,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     document.getElementById('agencyTaxTitle').textContent = '仲退成本 營業、營所稅（' + modeName(mode) + '）';
     input.setAttribute('aria-label', modeName(mode) + '營業、營所稅費率');
     input.value = snapshot.value;
-    showError(api.status().ok ? '' : '設定無法讀取，請重新開啟後再試');
+    showError('');
+    if (!api.status().ok) showSaveError('費率暫時無法讀取', '請稍後再試儲存');
     hideEditor(false, false);
     previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
@@ -9052,12 +9109,13 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
     input.value = parsed.text;
     const result = api.commit(editingMode, parsed.text, expectedRev);
     if (!result.ok) {
-      if (result.reason === 'conflict') {
-        expectedRev = api.snapshot(editingMode).rev;
-        showError('此費率已在另一個視窗更改，請確認後再套用');
+      if (result.reason === 'conflict' || result.reason === 'revision') {
+        const latest = api.snapshot(editingMode);
+        expectedRev = latest.rev;
+        if (latest.rev) showSaveError('目前保存為 ' + latest.value + '%', '請確認後再按儲存');
+        else showSaveError('費率暫時無法讀取', '請稍後再試儲存');
       } else {
-        showError('設定未能儲存，尚未套用');
-        reportStorageIssue('fwTax_agency_tax_v1', false);
+        showSaveError('費率未能儲存', '尚未套用，請重試');
       }
       return;
     }
