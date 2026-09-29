@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.29C-storage">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29C-storage">
+<link rel="manifest" href="manifest.json?v=2026.09.29D-ui">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29D-ui">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29C-storage">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29D-ui">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -158,6 +158,14 @@
   .toast.show {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+  .toast.is-clear-notice {
+    font-family: "Microsoft JhengHei", sans-serif;
+    font-size: 24px;
+    font-weight: 700;
+  }
+  @media (min-width: 768px) {
+    .toast.is-clear-notice { font-size: 28px; }
   }
   .container { max-width: 720px; margin: 0 auto; padding: 0 0 40px; }
 
@@ -3022,10 +3030,12 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 .agency-tax-trigger > span { display: block; border: 1px solid #d6e2dc; border-radius: 7px; background: #f0f5f2; padding: 4px 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .agency-tax-trigger:hover > span { background: #e2eee7; }
 .agency-tax-trigger.agency-tax-holding > span { border-color: #638b76; background: #e2eee7; }
-.agency-tax-trigger:focus-visible { outline: 2px solid #387a61; outline-offset: 2px; border-radius: 8px; }
+.agency-tax-trigger:focus { outline: none; }
+.agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) > span { border-color: #387a61; box-shadow: inset 0 0 0 1px #387a61; }
 body.is-preview .agency-tax-trigger { color: #315777; }
 body.is-preview .agency-tax-trigger > span { border-color: #d7e1eb; background: #edf3f8; }
 body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
+body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) > span { border-color: #315777; box-shadow: inset 0 0 0 1px #315777; }
 .pg-rows:has(.agency-tax-row) { container-type: inline-size; container-name: agency-rows; }
 @container agency-rows (max-width: 350px) {
   .agency-tax-row { grid-template-columns: 26px minmax(0, 1fr) auto 24px; gap: 3px 6px; }
@@ -3628,12 +3638,12 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.29C</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.29D</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
 
-<div class="toast" id="toast">已清空,可以開始輸入</div>
+<div class="toast" id="toast">已清空數值</div>
 <div class="neg-toast" id="negToast" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">不可輸入負數</div>
 
 <!-- ===== 自訂計算機鍵盤(取代系統數字鍵盤)===== -->
@@ -3735,9 +3745,9 @@ body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.09.29C-storage"></script>
-<script src="./precision.js?v=2026.09.29C-storage"></script>
-<script src="./view-state.js?v=2026.09.29C-storage"></script>
+<script src="./storage.js?v=2026.09.29D-ui"></script>
+<script src="./precision.js?v=2026.09.29D-ui"></script>
+<script src="./view-state.js?v=2026.09.29D-ui"></script>
 <script>
 /* Independent per-mode agency-tax preferences; inline after the unchanged storage engine. */
 (function (global) {
@@ -7092,9 +7102,10 @@ function positionCaseToast() {
   toast.style.bottom = offset > 0 ? (offset + (opened ? 8 : 24)) + 'px' : 'max(24px, env(safe-area-inset-bottom))';
   caseToastFrame = requestAnimationFrame(positionCaseToast);
 }
-function showToast(msg) {
+function showToast(msg, kind = '') {
   const toast = $('toast');
   clearTimeout(caseToastHideTimer);
+  toast.classList.toggle('is-clear-notice', kind === 'clear');
   toast.textContent = msg;
   toast.classList.add('show');
   cancelAnimationFrame(caseToastFrame);
@@ -7238,7 +7249,7 @@ function enterClearedState(verKey, opts) {
   // 只在目前所在版本才更新按鈕(切版本時另由 syncClearBtnForVer 處理)
   if (verKey === currentVerKey()) updateBtnVisibility();
   if (!opts.silent) {
-    showToast('已清空,可以開始輸入');
+    showToast('已清空數值', 'clear');
     setTimeout(() => { const e = $(focusId); if (e) e.focus(); }, 50);
   }
 }
@@ -9137,8 +9148,10 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       if (cardPress) cardPress.cancelled = true;
       if (backdropDown) backdropDown.moved = true;
     }
-    event.target.closest?.('.agency-tax-quiet-focus')?.classList.remove('agency-tax-quiet-focus');
     const trigger = event.target.closest?.('.agency-tax-trigger');
+    // Pointer interaction stays quiet, including a fresh button or a dialog return.
+    if (trigger) trigger.classList.add('agency-tax-quiet-focus');
+    else event.target.closest?.('.agency-tax-quiet-focus')?.classList.remove('agency-tax-quiet-focus');
     if (trigger && !dialog.open && event.button === 0 && event.isPrimary && activePointers.size === 1) {
       cancelHold();
       const state = { id: event.pointerId, button: trigger, x: event.clientX, y: event.clientY, timer: null };
