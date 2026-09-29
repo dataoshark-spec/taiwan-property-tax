@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.28E-rounding">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.28E-rounding">
+<link rel="manifest" href="manifest.json?v=2026.09.29B-agency-tax">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29B-agency-tax">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.28E-rounding">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29B-agency-tax">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3009,6 +3009,81 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   .calc-kb-keys { grid-auto-rows: var(--calc-row-height, 56px); gap: var(--calc-key-gap, 8px); }
   .ck-done { height: calc(var(--calc-row-height, 56px) - 4px); }
 </style>
+<style id="agencyTaxStyle">
+/* 29A: compact visible rate, with a full 44px click target. */
+.pg-label.agency-tax-label { display: flex; align-items: center; gap: 6px; overflow: visible; min-width: 0; }
+.agency-tax-label > span { white-space: nowrap; }
+.agency-tax-trigger { appearance: none; border: 0; background: transparent; color: #36594c; font: inherit; font-size: 12px; font-weight: 600; min-width: 44px; min-height: 44px; padding: 7px 0; cursor: pointer; touch-action: manipulation; flex: 0 0 auto; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.agency-tax-trigger > span { display: block; border: 1px solid #d6e2dc; border-radius: 7px; background: #f0f5f2; padding: 4px 7px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.agency-tax-trigger:hover > span { background: #e2eee7; }
+.agency-tax-trigger.agency-tax-holding > span { border-color: #638b76; background: #e2eee7; }
+.agency-tax-trigger:focus-visible { outline: 2px solid #387a61; outline-offset: 2px; border-radius: 8px; }
+body.is-preview .agency-tax-trigger { color: #315777; }
+body.is-preview .agency-tax-trigger > span { border-color: #d7e1eb; background: #edf3f8; }
+body.is-preview .agency-tax-trigger:hover > span { background: #dfeaf4; }
+.pg-rows:has(.agency-tax-row) { container-type: inline-size; container-name: agency-rows; }
+@container agency-rows (max-width: 350px) {
+  .agency-tax-row { grid-template-columns: 26px minmax(0, 1fr) auto 24px; gap: 3px 6px; }
+  .agency-tax-row .agency-tax-label { grid-column: 2 / -1; }
+  .agency-tax-row > .pg-value { grid-row: 2; grid-column: 2 / 4; }
+  .agency-tax-row > .pg-unit { grid-row: 2; grid-column: 4; }
+}
+.agency-tax-dialog {
+  --agency-accent: #285441; --agency-tint: #e5f2ec; --agency-text: #23382f;
+  position: fixed; inset: 0; margin: 0; width: 100%; height: 100%; height: 100dvh;
+  max-width: none; max-height: none; padding: 20px; border: 0; outline: none;
+  color: var(--agency-text); background: transparent; overflow: hidden;
+  overscroll-behavior: contain;
+}
+.agency-tax-dialog[open] { display: flex; align-items: center; justify-content: center; }
+.agency-tax-dialog::backdrop { background: rgba(18, 24, 28, .42); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity .15s ease-out; }
+.agency-tax-dialog.is-visible::backdrop { opacity: 1; }
+.agency-tax-dialog[data-mode="preview"] { --agency-accent: #284e70; --agency-tint: #e7eff7; --agency-text: #203d59; }
+#agencyTaxForm { width: 100%; max-width: 380px; margin: 0; min-width: 0; }
+.agency-tax-card { width: 100%; max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; border: 1px solid rgba(31,41,38,.1); border-radius: 18px; background: #fff; box-shadow: 0 1px 2px #12181c0f, 0 10px 26px -12px #12181c33; opacity: 0; transform: translateY(5px) scale(.98); transition: opacity .15s ease-out, transform .2s ease-out; }
+.is-visible .agency-tax-card { opacity: 1; transform: none; }
+.agency-tax-heading { position: sticky; top: 0; z-index: 1; background: var(--agency-tint); padding: 13px 16px 11px; box-shadow: 0 8px 12px -10px #0000002e; }
+.agency-tax-dialog h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.5; overflow-wrap: anywhere; }
+.agency-tax-body { padding: 12px 16px 0; }
+.agency-tax-input-wrap { display: flex; align-items: stretch; width: 100%; min-height: 42px; border: 1.5px solid #ebebeb; border-radius: 14px; background: #fff; cursor: pointer; touch-action: pan-y; transition: border-color .15s; }
+.agency-tax-input-wrap:hover { border-color: #b6c8be; }
+.agency-tax-input-wrap.is-editing { border-color: var(--agency-accent); }
+#agencyTaxInput { flex: 1; min-width: 0; width: 100%; height: 42px; padding: 0 10px; border: 0; border-radius: 14px 0 0 14px; background: transparent; color: #333; outline: none; font: inherit; font-size: 16px; font-variant-numeric: tabular-nums; box-shadow: none; cursor: pointer; caret-color: transparent; user-select: none; -webkit-user-select: none; touch-action: pan-y; }
+#agencyTaxInput::placeholder { color: #a7ada9; }
+.agency-tax-input-wrap > span { display: flex; align-items: center; padding-right: 12px; color: #7b827d; font-size: 13px; user-select: none; }
+.agency-tax-input-wrap.is-editing #agencyTaxInput { color: var(--agency-accent); }
+.agency-tax-help { font-size: 12px; color: #777; line-height: 1.65; margin: 8px 0 0; }
+#agencyTaxError { font-size: 13px; line-height: 1.5; color: #b43333; margin: 8px 0 0; }
+#agencyTaxError:empty { display: none; }
+.agency-tax-dialog button { font: inherit; cursor: pointer; touch-action: manipulation; }
+.agency-tax-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 12px; padding: 10px 16px 14px; position: sticky; bottom: 0; background: #fff; box-shadow: 0 -10px 14px -10px #00000029; }
+.agency-tax-actions button { min-width: 0; min-height: 44px; padding: 9px 4px; border: 1px solid #dcdcdc; border-radius: 12px; background: #fff; color: #777; font-size: 13px; font-weight: 600; white-space: nowrap; }
+#agencyTaxApply { background: var(--agency-accent); border-color: var(--agency-accent); color: #fff; }
+.agency-tax-dialog button:focus-visible { outline: 2px solid var(--agency-accent); outline-offset: 2px; }
+.agency-tax-input-wrap:has(#agencyTaxInput:focus-visible:not(.agency-tax-quiet-focus)) { outline: 2px solid var(--agency-accent); outline-offset: 2px; }
+.agency-tax-dialog .agency-tax-quiet-focus:focus, .agency-tax-dialog .agency-tax-quiet-focus:focus-visible,
+.agency-tax-trigger.agency-tax-quiet-focus:focus, .agency-tax-trigger.agency-tax-quiet-focus:focus-visible { outline: none; box-shadow: none; }
+.agency-tax-dialog.is-editing { align-items: flex-start; padding-top: var(--agency-card-top,12px); }
+.agency-tax-dialog.is-editing .agency-tax-card { max-height: var(--agency-card-max,calc(100dvh - 390px)); }
+.agency-tax-dialog.is-editing .agency-tax-actions { display: none; }
+.agency-tax-dialog.is-editing .agency-tax-body { padding-bottom: 14px; }
+.agency-tax-keypad { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: min(100%,480px); padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: #f2f2ee; box-shadow: 0 -6px 24px #0000002e; touch-action: none; }
+.agency-tax-keypad[hidden] { display: none !important; }
+.agency-tax-keypad .calc-kb-keys { grid-auto-rows: clamp(38px,6.1dvh,52px); gap: 7px; }
+.agency-tax-keypad .ck-key { font-size: 21px; border-radius: 12px; }
+.agency-tax-keypad .ck-fn { font-size: 18px; }
+.agency-tax-keypad .ck-done { height: auto; margin-top: 0; font-size: 17px; background: var(--agency-accent); }
+@media (max-height: 550px) {
+  .agency-tax-dialog.is-editing .agency-tax-help { display: none; }
+  .agency-tax-dialog.is-editing .agency-tax-heading { padding-top: 8px; padding-bottom: 8px; }
+  .agency-tax-dialog.is-editing .agency-tax-body { padding-top: 8px; padding-bottom: 8px; }
+  .agency-tax-keypad .calc-kb-keys { grid-auto-rows: 32px; gap: 5px; }
+  .agency-tax-keypad { padding-top: 5px; padding-bottom: 6px; }
+  .agency-tax-keypad .calc-kb-grip { margin: 0 auto 5px; }
+}
+@media (prefers-reduced-motion: reduce) { .agency-tax-card, .agency-tax-dialog::backdrop { transition: none; } }
+
+</style>
 </head>
 <body>
 
@@ -3546,7 +3621,7 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.28E</span>
+    <span id="appVersion">房地合一 · 更新日 2026.09.29B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3627,10 +3702,173 @@ input.ck-input-error-flash {animation:ck-input-error-flash .65s ease-in-out 3!im
   </div>
 </div>
 
-<script src="./storage.js?v=2026.09.28E-rounding"></script>
-<script src="./precision.js?v=2026.09.28E-rounding"></script>
-<script src="./view-state.js?v=2026.09.28E-rounding"></script>
+<!-- 29A: rate preferences are independent from the case and from display precision. -->
+<dialog class="agency-tax-dialog" id="agencyTaxDialog" aria-labelledby="agencyTaxTitle" aria-describedby="agencyTaxHelp">
+  <form id="agencyTaxForm" novalidate>
+    <div class="agency-tax-card" id="agencyTaxCard">
+      <header class="agency-tax-heading"><h2 id="agencyTaxTitle">仲退成本 營業、營所稅（成屋）</h2></header>
+      <div class="agency-tax-body">
+        <div class="agency-tax-input-wrap" id="agencyTaxInputWrap">
+          <input id="agencyTaxInput" type="text" readonly inputmode="none" autocomplete="off" spellcheck="false" aria-label="營業、營所稅費率" aria-describedby="agencyTaxHelp agencyTaxError" aria-controls="agencyTaxKeypad" aria-expanded="false">
+          <span aria-hidden="true">%</span>
+        </div>
+        <p class="agency-tax-help" id="agencyTaxHelp">恢復預設為 13%。可輸入 0～100%</p>
+        <p id="agencyTaxError" role="alert"></p>
+      </div>
+      <div class="agency-tax-actions">
+        <button type="button" id="agencyTaxReset">恢復預設</button>
+        <button type="button" id="agencyTaxCancel">取消</button>
+        <button type="submit" id="agencyTaxApply" autofocus>儲存並套用</button>
+      </div>
+    </div>
+  </form>
+  <div class="agency-tax-keypad" id="agencyTaxKeypad" role="group" aria-label="費率計算鍵盤" hidden inert>
+    <div class="calc-kb-grip" aria-hidden="true"></div>
+    <div class="calc-kb-keys" id="agencyTaxKeys"></div>
+  </div>
+</dialog>
+
+<script src="./storage.js?v=2026.09.29B-agency-tax"></script>
+<script src="./precision.js?v=2026.09.29B-agency-tax"></script>
+<script src="./view-state.js?v=2026.09.29B-agency-tax"></script>
 <script>
+/* Independent per-mode agency-tax preferences; inline after the unchanged storage engine. */
+(function (global) {
+  'use strict';
+  const MODES = ['ready', 'preview'];
+  const NAMESPACE = 'fwTax_agency_tax_v1';
+  const DEFAULT = '13';
+  const listeners = new Set();
+  let store = null;
+  let readable = false;
+  let view = {
+    ready: { value: DEFAULT, rev: null },
+    preview: { value: DEFAULT, rev: null }
+  };
+
+  function validMode(mode) { return MODES.includes(mode); }
+  function requireMode(mode) {
+    if (!validMode(mode)) throw new TypeError('Unknown agency-tax mode.');
+  }
+  function parse(raw) {
+    const invalid = { ok: false, text: null, message: '請輸入 0～100 的百分比數值' };
+    if (typeof raw !== 'string') return invalid;
+    const source = raw.trim();
+    if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(source)) return invalid;
+    const parts = source.split('.');
+    const integer = (parts[0] || '0').replace(/^0+(?=\d)/, '');
+    const fraction = parts[1] || '';
+    // Compare the original literal, before truncation or Number conversion.
+    if (integer.length > 3 || (integer.length === 3 && integer > '100') ||
+        (integer === '100' && /[1-9]/.test(fraction))) return invalid;
+    const kept = fraction.slice(0, 4).replace(/0+$/, '');
+    return { ok: true, text: integer + (kept ? '.' + kept : ''), message: '' };
+  }
+  function validRevision(rev) {
+    return Array.isArray(rev) && rev.length === 2 && Number.isSafeInteger(rev[0]) && rev[0] >= 0 &&
+      typeof rev[1] === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(rev[1]) &&
+      (rev[0] !== 0 || rev[1] === 'seed');
+  }
+  function readView(state) {
+    if (!state || !state.cells) throw new Error('Missing agency-tax preferences.');
+    const next = {};
+    for (const mode of MODES) {
+      const cell = state.cells[mode];
+      const value = cell && parse(cell.value);
+      if (!value || !value.ok || value.text !== cell.value || !validRevision(cell.rev)) {
+        throw new Error('Invalid agency-tax preferences.');
+      }
+      next[mode] = { value: cell.value, rev: cell.rev.slice() };
+    }
+    return next;
+  }
+  function readLatest() {
+    if (!store) store = global.FwLocalStore.create({
+      namespace: NAMESPACE,
+      seed: () => ({ ready: DEFAULT, preview: DEFAULT })
+    });
+    return readView(store.read());
+  }
+  function publish(next, source) {
+    const changed = MODES.filter(mode => view[mode].value !== next[mode].value);
+    view = next;
+    readable = true;
+    if (changed.length) {
+      const event = Object.freeze({
+        source,
+        changed: Object.freeze(changed),
+        values: Object.freeze({ ready: view.ready.value, preview: view.preview.value })
+      });
+      // A renderer exception cannot turn an already-persisted change into a failed save.
+      for (const listener of Array.from(listeners)) {
+        try { listener(event); } catch (_) {}
+      }
+    }
+    return changed.length > 0;
+  }
+  function refresh() {
+    let latest;
+    try { latest = readLatest(); }
+    catch (_) { readable = false; return false; }
+    return publish(latest, 'refresh');
+  }
+  function get(mode) { requireMode(mode); return view[mode].value; }
+  function snapshot(mode) {
+    requireMode(mode);
+    refresh();
+    return { value: view[mode].value, rev: readable ? view[mode].rev.slice() : null };
+  }
+  function scaledDecimal(units) {
+    const digits = String(units).padStart(7, '0');
+    const fraction = digits.slice(-6).replace(/0+$/, '');
+    return digits.slice(0, -6) + (fraction ? '.' + fraction : '');
+  }
+  function units(mode) {
+    const parts = get(mode).split('.');
+    return Number(parts[0]) * 10000 + Number((parts[1] || '').padEnd(4, '0'));
+  }
+  function ratio(mode) { return Number(scaledDecimal(units(mode))); }
+  function factor(mode) { return Number(scaledDecimal(1000000 + units(mode))); }
+  function commit(mode, raw, expectedRev) {
+    if (!validMode(mode)) return { ok: false, reason: 'mode', value: null };
+    const parsed = parse(raw);
+    if (!parsed.ok) return { ok: false, reason: 'invalid', value: get(mode), message: parsed.message };
+    if (!readable) return { ok: false, reason: 'read', value: get(mode) };
+    if (!validRevision(expectedRev)) return { ok: false, reason: 'revision', value: get(mode) };
+    let latest;
+    try { latest = readLatest(); }
+    catch (_) { readable = false; return { ok: false, reason: 'read', value: get(mode) }; }
+    if (latest[mode].rev[0] !== expectedRev[0] || latest[mode].rev[1] !== expectedRev[1]) {
+      return { ok: false, reason: 'conflict', value: latest[mode].value };
+    }
+    let result;
+    try {
+      const patch = latest[mode].value === parsed.text ? {} : { [mode]: parsed.text };
+      result = store.commit(patch, { [mode]: expectedRev.slice() });
+    } catch (error) {
+      const reason = error && error.code === 'writeFailed' ? 'write' : 'read';
+      if (reason === 'read') readable = false;
+      return { ok: false, reason, value: get(mode) };
+    }
+    let next;
+    try { next = readView(result.state); }
+    catch (_) { readable = false; return { ok: false, reason: 'read', value: get(mode) }; }
+    if (!result.ok) return { ok: false, reason: 'conflict', value: next[mode].value };
+    publish(next, 'commit');
+    return { ok: true, reason: null, value: get(mode) };
+  }
+  function subscribe(listener) {
+    if (typeof listener !== 'function') throw new TypeError('An agency-tax listener is required.');
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+  refresh();
+  global.FwAgencyTax = Object.freeze({
+    namespace: NAMESPACE, get, ratio, factor, parse, snapshot, commit, refresh, subscribe,
+    status: () => ({ ok: readable, reason: readable ? null : 'read' })
+  });
+})(typeof window !== 'undefined' ? window : globalThis);
+
 const $ = id => document.getElementById(id);
 const fmt = n => fmtMoney(n);
 // 僅供顯示截尾：吸收整數邊界附近的浮點誤差，不回寫計算值。
@@ -3684,6 +3922,13 @@ function fmtFlowPercent(value) {
 const fmtTaxRate = value => (value * 100).toFixed(0) + '%';
 // 元／萬共用同一顯示取整，萬元固定四位並保留尾零。
 const fmtWan4 = n => fmtMoney(n, 'wan');
+
+// Visible percentage is the complete adopted input, independent of result precision.
+function renderAgencyTaxButton(mode) {
+  const value = FwAgencyTax.get(mode) + '%';
+  const label = mode === 'preview' ? '預售' : '成屋';
+  return `<button type="button" class="agency-tax-trigger" data-mode="${mode}" aria-haspopup="dialog" aria-controls="agencyTaxDialog" aria-label="${label}營業、營所稅 ${value}，長按修改" title="長按修改費率"><span>${value}</span></button>`;
+}
 
 // === 清空/恢復狀態(最前面宣告,確保 calc / 版本切換等任何時機都可安全存取)===
 // 成屋、預售各自獨立的 snapshot;null = 非清空態,物件 = 已清空(存著清空前的值)
@@ -4421,7 +4666,7 @@ function calc() {
   // === 屋主目標利潤反推「仲退」 ===
   // 目標利潤(元) - 目前利潤 = 屋主不足利潤(負數歸零)
   // 仲退 = 屋主不足利潤(這就是仲介要退給屋主的錢,使最終利潤達到目標)
-  // 注意:Excel 公式 仲介所需退成本 = 不足利潤 × 1.13(含營業稅)
+  // 注意:Excel 公式 仲介所需退成本 = 不足利潤 × (1＋本模式營業營所稅率)
   //       但仲介實際退給屋主的錢 = 不足利潤(顯示在 J37「仲退」)
   const targetProfit = num('d_target') * 10000;  // 目標利潤(萬→元)
   const shortfall = Math.max(0, targetProfit - profitBase);
@@ -4438,7 +4683,7 @@ function calc() {
   // === 防呆列更新 ===
   // 總佣收 = 屋主費% + 買方費%(取較高的:%數 vs 固定額%數)
   // 佣收防呆 = 屋主費% + 買方%數% + 買方固定額%(全加)→ 警示重複輸入
-  // 最後佣收 = (總佣金元 - 仲退×1.13)/售價 → 有仲退時會變負
+  // 最後佣收 = (總佣金元 - 仲退×本模式含稅倍率)/售價 → 有仲退時會變負
   const buyerByPctRate = buyerRate;
   const buyerByFixedRate = sale > 0 ? buyerFixed / sale : 0;
   const buyerEffectiveRate = Math.max(buyerByPctRate, buyerByFixedRate);
@@ -4446,11 +4691,12 @@ function calc() {
   const totalCommission = sellerRate + buyerEffectiveRate;            // 總佣收
   const safetyCheck = sellerRate + buyerByPctRate + buyerByFixedRate; // 防呆(全加)
 
-  // 最後佣收 = 總佣金 - 仲退含稅(仲退×1.13)- 仲介「其它」費用
+  // 最後佣收 = 總佣金 - 仲退含稅(仲退×本模式含稅倍率)- 仲介「其它」費用
   // 對齊 Excel Y74(含 Y71「其它」)與三方明細 finalAgent(含 otherAgent)
   const totalCommElem = sale > 0 ? sale * totalCommission : agentFee + buyerFee; // 零售價仍保留固定買方服務費
   const agentOtherElem = num('pt_agent_other') * 10000;  // 仲介「其它」(萬→元)
-  const finalCommAmount = totalCommElem - rebate * 1.13 - agentOtherElem;
+  const agencyTaxFactor = FwAgencyTax.factor('ready');
+  const finalCommAmount = totalCommElem - rebate * agencyTaxFactor - agentOtherElem;
   const finalCommission = sale > 0 ? finalCommAmount / sale : 0;
 
   // 每個欄位獨立判斷異常 — 對齊 Excel 條件格式 R13/R14/R15
@@ -4467,7 +4713,7 @@ function calc() {
     ((typeof clearSnapshots !== 'undefined') && clearSnapshots.ready !== null);
   const totalAbnormal = !isCleared && (isCommissionOverCap(totalCommission));
   const limitAbnormal = !isCleared && (isCommissionOverCap(safetyCheck));
-  const finalAbnormal = !isCleared && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommElem, rebate * 1.13, agentOtherElem, ...(rebate > 0 ? [sale, buy, tax, agentFee, sellMiscTotal, buyCost, nonDeductible, targetProfit] : [])));
+  const finalAbnormal = !isCleared && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommElem, rebate * agencyTaxFactor, agentOtherElem, ...(rebate > 0 ? [sale, buy, tax, agentFee, sellMiscTotal, buyCost, nonDeductible, targetProfit] : [])));
 
   if ($('cell_total')) $('cell_total').classList.toggle('abnormal', totalAbnormal);
   if ($('cell_limit')) $('cell_limit').classList.toggle('abnormal', limitAbnormal);
@@ -5205,7 +5451,7 @@ function renderPartyTables(d) {
   const sellerComm = d.agentFee;
   const buyerComm = d.buyerFee;
   const rebateToOwner = d.rebate;
-  const businessTax = rebateToOwner > 0 ? rebateToOwner * 0.13 : 0;
+  const businessTax = rebateToOwner > 0 ? rebateToOwner * FwAgencyTax.ratio('ready') : 0;
   const otherAgent = (d.a_other || 0) * 10000;  // 使用者輸入單位是萬,轉成元才能跟其他值運算
   const finalAgent = sellerComm + buyerComm - rebateToOwner - businessTax - otherAgent;
   const finalRate = d.sale > 0 ? finalAgent / d.sale : 0;
@@ -5218,7 +5464,7 @@ function renderPartyTables(d) {
         <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">賣方 / 仲介費</div><div class="pg-value" id="pt_agent_seller">${fmtW4(sellerComm)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
-        <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
+        <div class="pg-row agency-tax-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label agency-tax-label"><span>營業、營所稅</span>${renderAgencyTaxButton('ready')}</div><div class="pg-value" id="pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
         <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label" id="pt_agent_other-label">其它</div><div class="pg-value">${renderPartyWanInput('pt_agent_other')}</div><div class="pg-unit">萬</div></div>
       </div>
     </div>
@@ -6298,11 +6544,11 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
 
     // ===== 仲介(預售)=====
     // Excel V69 = W54+W57-W60-W63-W66
-    // = 賣方仲介費 + 買方仲介費 - 退給屋主 - (退×0.13)營業稅 - 其它
+    // = 賣方仲介費 + 買方仲介費 - 退給屋主 - (退×本模式稅率)營業稅 - 其它
     const sellerComm = d.sellerAgentFee;
     const buyerComm = d.buyerFee;
     const rebateToOwner = d.rebate;
-    const businessTax = rebateToOwner > 0 ? rebateToOwner * 0.13 : 0;
+    const businessTax = rebateToOwner > 0 ? rebateToOwner * FwAgencyTax.ratio('preview') : 0;
     const otherAgentP = (d.p_a_other || 0) * 10000;   // 仲介「其它」(萬→元),對應 Excel W66
     const finalAgent = sellerComm + buyerComm - rebateToOwner - businessTax - otherAgentP;
     const finalRate = d.sale > 0 ? finalAgent / d.sale : 0;
@@ -6316,7 +6562,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
             <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">賣方 / 仲介費</div><div class="pg-value" id="p_pt_agent_seller">${fmtW4(sellerComm)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-add">加</div><div class="pg-label">買方 / 仲介費</div><div class="pg-value" id="p_pt_agent_buyer">${fmtW4(buyerComm)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">退給屋主</div><div class="pg-value" id="p_pt_agent_rebate">${fmtW4(rebateToOwner)}</div><div class="pg-unit">萬</div></div>
-            <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label">營業、營所稅</div><div class="pg-value" id="p_pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
+            <div class="pg-row agency-tax-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label agency-tax-label"><span>營業、營所稅</span>${renderAgencyTaxButton('preview')}</div><div class="pg-value" id="p_pt_agent_business">${fmtW4(businessTax)}</div><div class="pg-unit">萬</div></div>
             <div class="pg-row"><div class="pg-op pg-op-sub">扣</div><div class="pg-label" id="p_pt_agent_other-label">其它</div><div class="pg-value">${renderPartyWanInput('p_pt_agent_other')}</div><div class="pg-unit">萬</div></div>
           </div>
         </div>
@@ -6435,7 +6681,8 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     const totalCommAmount = sale > 0 ? sale * totalCommission : sellerAgentFee + buyerFee; // 零售價仍保留固定買方服務費
     // 最後佣收扣掉仲介「其它」(對齊 Excel V69 含 W66)
     const agentOtherElemP = n('p_pt_agent_other') * 10000;
-    const finalCommAmount = totalCommAmount - rebate * 1.13 - agentOtherElemP;
+    const agencyTaxFactor = FwAgencyTax.factor('preview');
+    const finalCommAmount = totalCommAmount - rebate * agencyTaxFactor - agentOtherElemP;
     const finalCommission = sale > 0 ? finalCommAmount / sale : 0;
 
     // === 渲染 dashboard ===
@@ -6513,7 +6760,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
       ((typeof clearSnapshots !== 'undefined') && clearSnapshots.preview !== null);
     const totalAbnormal = !isClearedP && (isCommissionOverCap(totalCommission));
     const safetyAbnormal = !isClearedP && (isCommissionOverCap(safetyCheck));
-    const finalAbnormal = !isClearedP && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommAmount, rebate * 1.13, agentOtherElemP, ...(rebate > 0 ? [sale, buy, tax, sellerAgentFee, sellMisc, buyTaxFee, nonDeductible, targetProfit] : [])));
+    const finalAbnormal = !isClearedP && ((isCommissionOverCap(finalCommission)) || isNonPositiveCommission(sale, finalCommAmount, totalCommAmount, rebate * agencyTaxFactor, agentOtherElemP, ...(rebate > 0 ? [sale, buy, tax, sellerAgentFee, sellMisc, buyTaxFee, nonDeductible, targetProfit] : [])));
     if (cT) cT.classList.toggle('abnormal', totalAbnormal);
     if (cL) cL.classList.toggle('abnormal', safetyAbnormal);
     if (cF) cF.classList.toggle('abnormal', finalAbnormal);
@@ -7823,7 +8070,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   };
 
   // 導覽前先處理草稿；失敗時保留原欄位，避免先隱藏欄位或同一 click 重複提交。
-  const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn';
+  const CALC_NAV_SELECTOR = '.ver-btn, .tab-btn[data-tab], .tab-btn[data-ptab], .party-tab, .collapse-section-header, #collapseBtn, #pCollapseBtn, #rateOpenBtn, #pRateOpenBtn, .agency-tax-trigger';
   document.addEventListener('click', (event) => {
     if (!event.target.closest || !event.target.closest(CALC_NAV_SELECTOR)) return;
     negativeNoticeUI.clear();
@@ -8584,7 +8831,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
       if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && typeof ae.blur === 'function') {
         // 編輯中(自訂鍵盤開著且為目前欄位)不要強制 blur,避免打到一半被清掉
         var kb = document.getElementById('calcKb');
-        var editing = kb && kb.classList.contains('show') && ae.classList && ae.classList.contains('ck-active');
+        var editing = (kb && kb.classList.contains('show') && ae.classList && ae.classList.contains('ck-active')) || (document.getElementById('agencyTaxDialog')?.open && ae.closest('#agencyTaxDialog'));
         if (!editing) ae.blur();
       }
     } catch (e) {}
@@ -8608,10 +8855,406 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') {
   // 點軟體欄位外(兩側空白/頁面背景)也清選取
   document.addEventListener('pointerdown', function(e){
     var t = e.target;
-    if (t && t.closest && t.closest('#appShell, #calcKb, .toast, .rate-sheet, .install-banner, .neg-toast')) return;
+    if (t && t.closest && t.closest('#appShell, #calcKb, .toast, .rate-sheet, .install-banner, .neg-toast, .agency-tax-dialog')) return;
     clearResumeSelection();
   }, true);
 })();
+
+// 29B: the modal owns its keypad draft; only Apply commits the selected mode.
+(function bindAgencyTaxDialog() {
+  const api = window.FwAgencyTax;
+  const dialog = document.getElementById('agencyTaxDialog');
+  const form = document.getElementById('agencyTaxForm');
+  const card = document.getElementById('agencyTaxCard');
+  const input = document.getElementById('agencyTaxInput');
+  const wrap = document.getElementById('agencyTaxInputWrap');
+  const error = document.getElementById('agencyTaxError');
+  const keypad = document.getElementById('agencyTaxKeypad');
+  const keys = document.getElementById('agencyTaxKeys');
+  const applyButton = document.getElementById('agencyTaxApply');
+  const cancelButton = document.getElementById('agencyTaxCancel');
+  const resetButton = document.getElementById('agencyTaxReset');
+  // Reuse only the key markup/styles. Main-case keyboard listeners and state stay separate.
+  keys.innerHTML = document.getElementById('calcKbKeys').innerHTML;
+  let editingMode = null, expectedRev = null, editor = null, closing = false, sequence = 0;
+  let press = null, keyHold = null, consumedKey = null, clickGuard = null;
+  let keypadPress = null, cardPress = null, backdropDown = null, previousOverflow = null;
+  const activePointers = new Set(), consumedPointers = new Set();
+  const HOLD_MS = 550;
+  const modeName = mode => mode === 'preview' ? '預售' : '成屋';
+  const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function quietFocus(element) {
+    if (!element || !element.isConnected || element.closest('[inert]')) return;
+    element.classList.add('agency-tax-quiet-focus');
+    element.focus({ preventScroll: true });
+  }
+  function showError(message) {
+    error.textContent = message || '';
+    input.setAttribute('aria-invalid', message ? 'true' : 'false');
+    if (editor) layoutEditor();
+  }
+  function refreshButtons() {
+    document.querySelectorAll('.agency-tax-trigger').forEach(button => {
+      const value = api.get(button.dataset.mode) + '%';
+      const chip = button.querySelector('span');
+      if (chip && chip.textContent !== value) chip.textContent = value;
+      button.setAttribute('aria-label', modeName(button.dataset.mode) + '營業、營所稅 ' + value + '，長按修改');
+    });
+  }
+  function recalculate() {
+    calc();
+    if (typeof window.calcPresale === 'function') window.calcPresale();
+    refreshButtons();
+  }
+  function cancelHold() {
+    if (press) { clearTimeout(press.timer); press.button.classList.remove('agency-tax-holding'); }
+    if (keyHold) { clearTimeout(keyHold.timer); keyHold.button.classList.remove('agency-tax-holding'); }
+    press = null; keyHold = null;
+  }
+  function hideEditor(restore, focus = true) {
+    if (editor && restore) input.value = editor.before;
+    editor = null;
+    keypadPress = null;
+    input.placeholder = '';
+    input.setAttribute('aria-expanded', 'false');
+    wrap.classList.remove('is-editing');
+    dialog.classList.remove('is-editing');
+    keypad.hidden = true;
+    keypad.inert = true;
+    keys.querySelectorAll('.ck-pressed').forEach(key => key.classList.remove('ck-pressed'));
+    if (focus) quietFocus(applyButton);
+  }
+  function close() {
+    if (!dialog.open || closing) return;
+    closing = true;
+    cancelHold();
+    hideEditor(true, false);
+    cardPress = null; backdropDown = null;
+    const mode = editingMode, closeSequence = ++sequence;
+    dialog.classList.remove('is-visible');
+    form.inert = true;
+    setTimeout(() => {
+      if (sequence !== closeSequence) return;
+      dialog.close();
+      form.inert = false;
+      if (previousOverflow !== null) document.documentElement.style.overflow = previousOverflow;
+      previousOverflow = null;
+      editingMode = null; expectedRev = null; closing = false;
+      quietFocus(document.querySelector('.agency-tax-trigger[data-mode="' + mode + '"]'));
+    }, reducedMotion() ? 0 : 160);
+  }
+  function open(button) {
+    if (dialog.open || closing || document.getElementById('rateSheet')?.classList.contains('show')) return;
+    const mode = button.dataset.mode;
+    if (mode !== currentVerKey()) return;
+    if (typeof window.__commitCalcKbDraft === 'function' && window.__commitCalcKbDraft() === false) return;
+    if (typeof window.__settleCalcKbForModeSwitch === 'function') window.__settleCalcKbForModeSwitch();
+    const snapshot = api.snapshot(mode);
+    editingMode = mode; expectedRev = snapshot.rev;
+    dialog.dataset.mode = mode;
+    document.getElementById('agencyTaxTitle').textContent = '仲退成本 營業、營所稅（' + modeName(mode) + '）';
+    input.setAttribute('aria-label', modeName(mode) + '營業、營所稅費率');
+    input.value = snapshot.value;
+    showError(api.status().ok ? '' : '設定無法讀取，請重新開啟後再試');
+    hideEditor(false, false);
+    previousOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    const openSequence = ++sequence;
+    applyButton.classList.add('agency-tax-quiet-focus');
+    dialog.showModal();
+    quietFocus(applyButton);
+    requestAnimationFrame(() => {
+      if (sequence === openSequence && dialog.open && !closing) dialog.classList.add('is-visible');
+    });
+  }
+  function layoutEditor() {
+    if (!editor || !dialog.open) return;
+    const height = dialog.clientHeight;
+    const keyHeight = keypad.getBoundingClientRect().height;
+    const available = Math.max(70, height - keyHeight - 24);
+    dialog.style.setProperty('--agency-card-max', available + 'px');
+    const cardHeight = Math.min(card.scrollHeight, available);
+    const top = Math.max(12, Math.min(editor.originalTop, height - keyHeight - cardHeight - 12));
+    dialog.style.setProperty('--agency-card-top', top + 'px');
+  }
+  function beginEditor() {
+    if (!dialog.open || closing || editor) return;
+    editor = { before: input.value, text: '', touched: false, originalTop: card.getBoundingClientRect().top - dialog.getBoundingClientRect().top };
+    input.placeholder = input.value;
+    input.value = '';
+    showError('');
+    keys.classList.toggle('ops-left', document.getElementById('calcKbKeys').classList.contains('ops-left'));
+    keypad.hidden = false; keypad.inert = false;
+    dialog.classList.add('is-editing'); wrap.classList.add('is-editing');
+    input.setAttribute('aria-expanded', 'true');
+    layoutEditor();
+    quietFocus(input);
+  }
+  function evaluateDraft() {
+    if (!editor) return { ok: false, message: '請輸入 0～100%' };
+    if (!editor.touched) return api.parse(editor.before);
+    const text = editor.text.trim();
+    if (!text) return { ok: false, message: '請輸入 0～100%' };
+    // The shared pure rational evaluator checks the original result before four-place truncation.
+    const result = FWDecimalInput.evaluate(text, { max: '100' });
+    if (result.negative || result.exceedsLimit) return { ok: false, message: '請輸入 0～100%' };
+    if (!result.ok) return { ok: false, message: '算式有誤，請重新輸入' };
+    return api.parse(result.text);
+  }
+  function completeEditor() {
+    if (!editor) return true;
+    const parsed = evaluateDraft();
+    if (!parsed.ok) { showError(parsed.message); quietFocus(input); return false; }
+    input.value = parsed.text;
+    hideEditor(false);
+    showError('');
+    return true;
+  }
+  function renderExpression() {
+    if (!editor) return;
+    input.value = editor.text.replace(/\*/g, '×').replace(/\//g, '÷');
+    input.scrollLeft = input.scrollWidth;
+  }
+  function pressKey(key) {
+    if (!editor || closing) return;
+    if (key === 'done') { completeEditor(); return; }
+    if (key === 'swap') { keys.classList.toggle('ops-left'); return; }
+    if (key === '=') {
+      const parsed = evaluateDraft();
+      if (!parsed.ok) { showError(parsed.message); return; }
+      editor.text = parsed.text; editor.touched = true; showError(''); renderExpression(); return;
+    }
+    if (editor.replaceNext) { editor.text = ''; delete editor.replaceNext; }
+    editor.touched = true;
+    showError('');
+    if (key === 'C') editor.text = '';
+    else if (key === 'back') editor.text = editor.text.slice(0,-1);
+    else if (key === '.') {
+      const current = editor.text.split(/[+*/()\-]/).pop();
+      if (!current.includes('.')) editor.text += current === '' ? '0.' : '.';
+    } else if (['+','-','*','/'].includes(key)) {
+      if (editor.text === '' && key !== '-') return;
+      if (/[+*/\-]$/.test(editor.text)) editor.text = editor.text.slice(0,-1);
+      editor.text += key;
+    } else if (/^[0-9()]$/.test(key)) {
+      if (editor.text.length >= FWDecimalInput.limits.expressionLength) { showError('輸入內容過長，請重新輸入'); return; }
+      editor.text += key;
+    } else return;
+    renderExpression();
+  }
+  function apply(event) {
+    event.preventDefault();
+    if (!dialog.open || closing || !editingMode) return;
+    if (editor) { completeEditor(); return; }
+    const parsed = api.parse(input.value);
+    if (!parsed.ok) { showError(parsed.message); quietFocus(input); return; }
+    input.value = parsed.text;
+    const result = api.commit(editingMode, parsed.text, expectedRev);
+    if (!result.ok) {
+      if (result.reason === 'conflict') {
+        expectedRev = api.snapshot(editingMode).rev;
+        showError('此費率已在另一個視窗更改，請確認後再套用');
+      } else {
+        showError('設定未能儲存，尚未套用');
+        reportStorageIssue('fwTax_agency_tax_v1', false);
+      }
+      return;
+    }
+    close();
+  }
+
+  // A consumed hold/tap must not become a click on a newly opened or rearranged surface.
+  function eatRelease(event) {
+    clickGuard = { until: performance.now() + 900 };
+    if (event.cancelable) event.preventDefault();
+    event.stopImmediatePropagation();
+  }
+  window.addEventListener('pointerdown', event => {
+    clickGuard = null; // A genuinely new press starts a new interaction.
+    activePointers.add(event.pointerId);
+    if (activePointers.size > 1) {
+      cancelHold();
+      if (keypadPress) keypadPress.cancelled = true;
+      if (cardPress) cardPress.cancelled = true;
+      if (backdropDown) backdropDown.moved = true;
+    }
+    event.target.closest?.('.agency-tax-quiet-focus')?.classList.remove('agency-tax-quiet-focus');
+    const trigger = event.target.closest?.('.agency-tax-trigger');
+    if (trigger && !dialog.open && event.button === 0 && event.isPrimary && activePointers.size === 1) {
+      cancelHold();
+      const state = { id: event.pointerId, button: trigger, x: event.clientX, y: event.clientY, timer: null };
+      press = state; trigger.classList.add('agency-tax-holding');
+      state.timer = setTimeout(() => {
+        if (press !== state || activePointers.size !== 1 || !trigger.isConnected || !trigger.getClientRects().length || document.hidden) return;
+        trigger.classList.remove('agency-tax-holding'); press = null;
+        consumedPointers.add(state.id);
+        open(trigger);
+      }, HOLD_MS);
+      return;
+    }
+    if (!dialog.open || closing || event.button !== 0 || !event.isPrimary) return;
+    const key = event.target.closest?.('#agencyTaxKeys button');
+    if (editor && key && activePointers.size === 1) {
+      keypadPress = { id: event.pointerId, key, x: event.clientX, y: event.clientY, cancelled: false, moved: false };
+      key.classList.add('ck-pressed');
+      event.preventDefault();
+    } else if (card.contains(event.target) && !event.target.closest('input, button, .agency-tax-input-wrap')) {
+      cardPress = { id: event.pointerId, x: event.clientX, y: event.clientY, cancelled: false };
+    }
+    backdropDown = event.target === dialog && activePointers.size === 1
+      ? { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false } : null;
+  }, true);
+  window.addEventListener('pointermove', event => {
+    if (press?.id === event.pointerId && Math.hypot(event.clientX-press.x,event.clientY-press.y) > 8) cancelHold();
+    if (keypadPress?.id === event.pointerId && Math.hypot(event.clientX-keypadPress.x,event.clientY-keypadPress.y) > 8) {
+      keypadPress.moved = true; keypadPress.key.classList.remove('ck-pressed');
+    }
+    if (backdropDown?.id === event.pointerId && Math.hypot(event.clientX-backdropDown.x,event.clientY-backdropDown.y) > 8) backdropDown.moved = true;
+  }, { capture: true, passive: true });
+  function releasePointer(event) {
+    activePointers.delete(event.pointerId);
+    if (consumedPointers.delete(event.pointerId)) { eatRelease(event); return; }
+    if (press?.id === event.pointerId) cancelHold();
+    if (keypadPress?.id === event.pointerId) {
+      const state = keypadPress; keypadPress = null; state.key.classList.remove('ck-pressed');
+      const dx = event.clientX-state.x, dy = event.clientY-state.y;
+      const hit = document.elementFromPoint(event.clientX,event.clientY);
+      eatRelease(event);
+      if (state.cancelled || event.type === 'pointercancel') return;
+      if (Math.abs(dx) >= 56 || dy >= 56) { completeEditor(); return; }
+      if (!state.moved && hit && state.key.contains(hit)) pressKey(state.key.dataset.k);
+      return;
+    }
+    if (cardPress?.id === event.pointerId) {
+      const state = cardPress; cardPress = null;
+      const dx = Math.abs(event.clientX-state.x), dy = Math.abs(event.clientY-state.y);
+      if (state.cancelled || event.type === 'pointercancel') { backdropDown = null; return; }
+      if (dx >= 56 && dx >= dy*1.6) { eatRelease(event); close(); }
+      else if (Math.max(dx,dy) > 8) { backdropDown = null; eatRelease(event); }
+    }
+    if (backdropDown?.id === event.pointerId) {
+      const state = backdropDown; backdropDown = null;
+      eatRelease(event);
+      if (event.type === 'pointerup' && !state.moved
+          && Math.hypot(event.clientX-state.x,event.clientY-state.y) <= 8
+          && document.elementFromPoint(event.clientX,event.clientY) === dialog) close();
+    }
+  }
+  window.addEventListener('pointerup', releasePointer, true);
+  window.addEventListener('pointercancel', releasePointer, true);
+  window.addEventListener('click', event => {
+    if (clickGuard && performance.now() < clickGuard.until && event.detail !== 0) {
+      clickGuard = null; event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (event.target.closest?.('.agency-tax-trigger')) { event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener('scroll', () => {
+    if (press || keyHold) cancelHold();
+    if (backdropDown) backdropDown.moved = true;
+  }, { capture: true, passive: true });
+  function cancelActiveGestures() {
+    cancelHold(); activePointers.clear(); consumedPointers.clear(); consumedKey = null;
+    keypadPress = null; cardPress = null; backdropDown = null;
+    keys.querySelectorAll('.ck-pressed').forEach(key => key.classList.remove('ck-pressed'));
+  }
+  window.addEventListener('blur', cancelActiveGestures);
+  window.addEventListener('pagehide', cancelActiveGestures);
+  document.addEventListener('visibilitychange', cancelActiveGestures);
+  window.addEventListener('resize', () => { cancelHold(); layoutEditor(); });
+  window.visualViewport?.addEventListener('resize', layoutEditor);
+  window.addEventListener('contextmenu', event => {
+    if (event.target.closest?.('.agency-tax-trigger, #agencyTaxInputWrap, #agencyTaxKeypad')) event.preventDefault();
+  }, true);
+
+  window.addEventListener('keydown', event => {
+    if (event.key === 'Tab') document.querySelectorAll('.agency-tax-quiet-focus').forEach(element => element.classList.remove('agency-tax-quiet-focus'));
+    if (consumedKey && event.key === consumedKey) { event.preventDefault(); event.stopImmediatePropagation(); return; }
+    const trigger = event.target.closest?.('.agency-tax-trigger');
+    if (!dialog.open && trigger && ['Enter',' '].includes(event.key)) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (event.repeat || keyHold) return;
+      cancelHold();
+      const state = { button: trigger, key: event.key, timer: null };
+      keyHold = state; trigger.classList.add('agency-tax-holding');
+      state.timer = setTimeout(() => {
+        if (keyHold !== state || document.activeElement !== trigger || !trigger.isConnected) return;
+        keyHold = null; trigger.classList.remove('agency-tax-holding'); consumedKey = state.key; open(trigger);
+      }, HOLD_MS);
+      return;
+    }
+    if (!dialog.open) return;
+    event.stopImmediatePropagation(); // Keep the underlying case keyboard and navigation out of this modal.
+    if (closing) { event.preventDefault(); return; }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      if (event.repeat) return;
+      if (editor) { hideEditor(true); showError(''); } else close();
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      const controls = editor ? [input, ...keys.querySelectorAll('button')] : [input, resetButton, cancelButton, applyButton];
+      const index = controls.indexOf(document.activeElement);
+      const next = controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length];
+      next.classList.remove('agency-tax-quiet-focus'); next.focus({ preventScroll: true }); return;
+    }
+    if (event.isComposing) { event.preventDefault(); return; }
+    if (editor) {
+      const focusedKey = event.target.closest?.('#agencyTaxKeys button');
+      if (focusedKey && ['Enter',' '].includes(event.key)) {
+        event.preventDefault(); consumedKey = event.key;
+        if (!event.repeat) pressKey(focusedKey.dataset.k);
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') { event.preventDefault(); editor.replaceNext = true; return; }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const key = event.key === 'Enter' ? 'done' : event.key === 'Backspace' ? 'back' : event.key === 'Delete' ? 'C' : event.key;
+      if (key === 'done' || key === 'back' || key === 'C' || key === '=' || /^[0-9.+*/()\-]$/.test(key)) {
+        event.preventDefault();
+        // Completing a draft moves focus to Apply. A still-held Enter must not submit it.
+        if (key === 'done') consumedKey = event.key;
+        if (!event.repeat || key === 'back') pressKey(key);
+      }
+    } else if (event.target === input && ['Enter',' '].includes(event.key)) {
+      event.preventDefault(); if (!event.repeat) beginEditor();
+    }
+  }, true);
+  window.addEventListener('keyup', event => {
+    if (consumedKey && event.key === consumedKey) { consumedKey = null; event.preventDefault(); event.stopImmediatePropagation(); return; }
+    if (keyHold && event.key === keyHold.key) { cancelHold(); event.preventDefault(); event.stopImmediatePropagation(); }
+  }, true);
+  window.addEventListener('paste', event => {
+    if (!dialog.open || !editor || closing) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    const text = (event.clipboardData?.getData('text') || '').trim().replace(/×/g,'*').replace(/÷/g,'/');
+    if (!text || text.length > FWDecimalInput.limits.expressionLength || !/^[0-9.+*/()\-]+$/.test(text)) { showError('請輸入有效數值或算式'); return; }
+    editor.text = text; editor.touched = true; delete editor.replaceNext;
+    showError(''); renderExpression();
+  }, true);
+  wrap.addEventListener('click', beginEditor);
+  keys.addEventListener('click', event => {
+    const key = event.target.closest('button');
+    if (key && event.detail === 0) pressKey(key.dataset.k); // Keyboard/assistive activation; pointer taps were handled on release.
+  });
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault(); if (editor) { hideEditor(true); showError(''); } else close();
+  });
+  form.addEventListener('submit', apply);
+  cancelButton.addEventListener('click', close);
+  resetButton.addEventListener('click', () => {
+    hideEditor(false, false); input.value = '13'; showError(''); quietFocus(resetButton);
+  });
+  api.subscribe(recalculate);
+  window.addEventListener('storage', event => {
+    if (event.key === null || event.key.startsWith('fwTax_agency_tax_v1:')) api.refresh();
+  });
+  window.addEventListener('pageshow', () => api.refresh());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') api.refresh(); });
+  refreshButtons();
+})();
+
+
 
 casePersistence.start();
 FwPrecision.start({ onWriteError: key => reportStorageIssue(key, false) });
