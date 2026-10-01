@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.09.29D-ui">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.09.29D-ui">
+<link rel="manifest" href="manifest.json?v=2026.10.01A-ui">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.10.01A-ui">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.09.29D-ui">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.10.01A-ui">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -248,49 +248,53 @@
   /* === PWA 安裝橫幅 === */
   .install-banner {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: 50%;
+    width: min(470px, calc(100% - 24px));
+    bottom: calc(16px + env(safe-area-inset-bottom));
     z-index: 9999;
-    background: #1F2F2A;
-    color: #F5F5F2;
-    border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,213,138,0.15);
+    background: #fff;
+    color: #1A1A1A;
+    border: 1px solid #DEDCD6;
+    border-radius: 16px;
+    padding: 11px 13px;
+    box-shadow: 0 14px 36px rgba(0,0,0,0.3);
     display: none;
     align-items: center;
-    gap: 10px;
-    transform: translateY(120%);
+    gap: 11px;
+    transform: translateX(-50%) translateY(220%);
     transition: transform 0.32s cubic-bezier(0.32, 0.72, 0.34, 1);
   }
   .install-banner.show {
     display: flex;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
   /* 編輯或選單開啟期間暫避安裝教學；不更改 show 或使用者安裝偏好。 */
   .install-banner[inert] { visibility: hidden; }
   .install-banner-icon {
     flex-shrink: 0;
-    width: 36px; height: 36px;
-    border-radius: 9px;
-    background: rgba(255,213,138,0.12);
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    background: #FBF0D9;
     display: flex; align-items: center; justify-content: center;
   }
+  .install-banner-icon svg { stroke: #8C6A27; }
   .install-banner-text {
     flex: 1 1 auto;
-    font-size: 13px;
+    min-width: 0;
+    font-size: 13.6px;
     font-weight: 500;
     line-height: 1.4;
-    color: #F5F5F2;
+    color: #1A1A1A;
   }
   .install-banner-btn {
     flex-shrink: 0;
-    background: linear-gradient(180deg, #FFE5A8 0%, #C4934D 100%);
-    color: #1F2F2A;
+    background: #0E705B;
+    color: #fff;
     border: none;
-    padding: 8px 14px;
-    border-radius: 8px;
-    font-size: 13px;
+    padding: 10px 17px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14.4px;
     font-weight: 700;
     cursor: pointer;
     letter-spacing: 0.5px;
@@ -301,13 +305,15 @@
     background: transparent;
     color: #999791;
     border: none;
-    width: 24px; height: 24px;
-    font-size: 20px;
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
     line-height: 1;
     cursor: pointer;
     padding: 0;
   }
-  .install-banner-x:active { color: #F5F5F2; }
+  .install-banner-x:active { color: #1A1A1A; background: #F5F5F2; }
 
   /* === 版本切換 (成屋版/預售版) === */
   .ver-switch {
@@ -3638,7 +3644,7 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.09.29D</span>
+    <span id="appVersion">房地合一 · 更新日 2026.10.01A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3745,9 +3751,9 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.09.29D-ui"></script>
-<script src="./precision.js?v=2026.09.29D-ui"></script>
-<script src="./view-state.js?v=2026.09.29D-ui"></script>
+<script src="./storage.js?v=2026.10.01A-ui"></script>
+<script src="./precision.js?v=2026.10.01A-ui"></script>
+<script src="./view-state.js?v=2026.10.01A-ui"></script>
 <script>
 /* Independent per-mode agency-tax preferences; inline after the unchanged storage engine. */
 (function (global) {
