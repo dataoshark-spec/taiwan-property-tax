@@ -112,13 +112,21 @@
     var memory = dictionary();
     var rememberedSeeds = dictionary();
     var hasInitialized = false;
+    // Opt in for preferences whose successful save must be confirmed on disk.
+    // Existing case stores retain their original merge and fallback behavior.
+    var requirePersistedState = options.requirePersistedState === true;
 
     function readItem(key) {
       try { return storage.getItem(key); }
       catch (error) { throw fail('readFailed', 'Cannot read local storage.', error); }
     }
     function writeItem(key, text) {
-      try { storage.setItem(key, text); }
+      try {
+        storage.setItem(key, text);
+        if (requirePersistedState && storage.getItem(key) !== text) {
+          throw fail('writeUnconfirmed', 'Stored data could not be verified.');
+        }
+      }
       catch (error) { throw fail('writeFailed', 'Cannot write local storage.', error); }
     }
     function newId() {
@@ -196,10 +204,21 @@
       return { marker: marker, operationMarker: operationMarker === '1' || finalOperationMarker === '1', records: records };
     }
     function load() {
+      // Seeds are never removed by normal compaction. A missing remembered seed
+      // means an old page must stop using its previous storage generation.
+      if (requirePersistedState && hasInitialized && Object.keys(rememberedSeeds).some(function (key) {
+        return readItem(key) === null;
+      })) {
+        memory = dictionary();
+        rememberedSeeds = dictionary();
+        hasInitialized = false;
+      }
       var scanned = scan();
       var records = scanned.records;
       var seeds = dictionary();
-      Object.keys(rememberedSeeds).forEach(function (key) { seeds[key] = rememberedSeeds[key]; });
+      if (!requirePersistedState) {
+        Object.keys(rememberedSeeds).forEach(function (key) { seeds[key] = rememberedSeeds[key]; });
+      }
       Object.keys(records).forEach(function (key) {
         if (records[key].kind === 'seed') seeds[key] = records[key];
       });
@@ -223,7 +242,7 @@
         if (!equalValue(canonicalSeed.values, seeds[seedKeys[s]].values)) throw fail('migrationConflict');
       }
       var merged = copyCells(canonicalSeed.cells);
-      mergeInto(merged, memory);
+      if (!requirePersistedState) mergeInto(merged, memory);
       var observedOperation = false;
       Object.keys(records).forEach(function (key) {
         var record = records[key];
@@ -235,8 +254,24 @@
           mergeInto(merged, record.cells);
         }
       });
-      if (scanned.operationMarker && !observedOperation && revision(memory)[0] === 0) {
+      if (scanned.operationMarker && !observedOperation && (requirePersistedState || revision(memory)[0] === 0)) {
         throw fail('missingSnapshot', 'Saved operations exist, but no operation snapshot is currently readable.');
+      }
+      if (requirePersistedState) {
+        // Enumeration can overlap a clear or another tab's compaction. Confirm
+        // that the records still on disk can reconstruct this exact state.
+        var persisted = copyCells(canonicalSeed.cells);
+        Object.keys(records).forEach(function (key) {
+          var record = records[key];
+          var text = readItem(key);
+          if (text === null) {
+            if (record.kind === 'seed') throw fail('missingSnapshot');
+            return; // A redundant old operation may have been compacted.
+          }
+          if (!equalValue(parseRecord(key, text), record)) throw fail('immutableChanged');
+          if (record.kind === 'op') mergeInto(persisted, record.cells);
+        });
+        if (!equalValue(persisted, merged)) throw fail('missingSnapshot');
       }
       if (scanned.marker === null) writeItem(markerKey, markerText);
       rememberedSeeds = seeds;

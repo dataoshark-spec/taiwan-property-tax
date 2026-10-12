@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.10.01A-ui">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.10.01A-ui">
+<link rel="manifest" href="manifest.json?v=2026.10.12A-ui">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.10.12A-ui">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.10.01A-ui">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.10.12A-ui">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3104,6 +3104,14 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   .agency-tax-keypad { padding-top: 5px; padding-bottom: 6px; }
   .agency-tax-keypad .calc-kb-grip { margin: 0 auto 5px; }
 }
+/* Use landscape width when the full editor cannot fit above the unchanged keypad. */
+@media (min-width: 560px) and (max-height: 389px) and (orientation: landscape) {
+  .agency-tax-dialog.is-editing { flex-direction: row; align-items: center; gap: 12px; padding: 12px; }
+  .agency-tax-dialog.is-editing #agencyTaxForm { flex: 1 1 0; min-width: 0; }
+  .agency-tax-dialog.is-editing .agency-tax-card { max-height: calc(100dvh - 24px); }
+  .agency-tax-dialog.is-editing .agency-tax-keypad { position: relative; left: auto; bottom: auto; transform: none; flex: 1 1 0; width: auto; min-width: 0; max-width: 480px; border-radius: 18px; }
+  .agency-tax-dialog.is-editing h2 { text-wrap: balance; }
+}
 @media (prefers-reduced-motion: reduce) { .agency-tax-card, .agency-tax-dialog::backdrop { transition: none; } }
 
 </style>
@@ -3644,7 +3652,7 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.10.01A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.10.12A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3751,11 +3759,11 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.10.01A-ui"></script>
-<script src="./precision.js?v=2026.10.01A-ui"></script>
-<script src="./view-state.js?v=2026.10.01A-ui"></script>
+<script src="./storage.js?v=2026.10.12A-ui"></script>
+<script src="./precision.js?v=2026.10.12A-ui"></script>
+<script src="./view-state.js?v=2026.10.12A-ui"></script>
 <script>
-/* Independent per-mode agency-tax preferences; inline after the unchanged storage engine. */
+/* Independent per-mode agency-tax preferences. */
 (function (global) {
   'use strict';
   const MODES = ['ready', 'preview'];
@@ -3808,6 +3816,7 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   function readLatest() {
     if (!store) store = global.FwLocalStore.create({
       namespace: NAMESPACE,
+      requirePersistedState: true,
       seed: () => ({ ready: DEFAULT, preview: DEFAULT })
     });
     return readView(store.read());
