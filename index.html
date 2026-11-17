@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.10.12A-ui">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.10.12A-ui">
+<link rel="manifest" href="manifest.json?v=2026.11.17A-ui">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.11.17A-ui">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.10.12A-ui">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.11.17A-ui">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -3652,7 +3652,7 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.10.12A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.11.17A</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3759,9 +3759,9 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.10.12A-ui"></script>
-<script src="./precision.js?v=2026.10.12A-ui"></script>
-<script src="./view-state.js?v=2026.10.12A-ui"></script>
+<script src="./storage.js?v=2026.11.17A-ui"></script>
+<script src="./precision.js?v=2026.11.17A-ui"></script>
+<script src="./view-state.js?v=2026.11.17A-ui"></script>
 <script>
 /* Independent per-mode agency-tax preferences. */
 (function (global) {
@@ -4923,7 +4923,10 @@ function autoFitDashNumbers(onlyInput = null) {
     const padL = parseFloat(cs.paddingLeft) || 0;
     const padR = parseFloat(cs.paddingRight) || 0;
     // 預留 suffix(萬/%)寬度 + 安全 gap
-    let available = el.clientWidth - padL - padR - (isDashInput || el.id === 'd_profit' ? 0 : 14);
+    // 數字輸入框以外框寬度扣掉邊框與留白各一次，避免窄螢幕重複扣除留白。
+    let available = isDashInput
+      ? el.offsetWidth - (parseFloat(cs.borderLeftWidth) || 0) - (parseFloat(cs.borderRightWidth) || 0) - padL - padR
+      : el.clientWidth - padL - padR - (el.id === 'd_profit' ? 0 : 14);
     if (available <= 0) return;
     // 完整數值依當下可用寬度縮放；長算式保留原本的最小字級與捲動。
     const fitWholeValue = isDashInput && (!el.classList.contains('ck-active') ||
