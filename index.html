@@ -71,10 +71,10 @@
 })();
 </script>
 <!-- PWA -->
-<link rel="manifest" href="manifest.json?v=2026.11.18A-ui">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.11.18A-ui">
+<link rel="manifest" href="manifest.json?v=2026.11.18B-ui">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png?v=2026.11.18B-ui">
 <!-- iOS -->
-<link rel="apple-touch-icon" href="icon-180.png?v=2026.11.18A-ui">
+<link rel="apple-touch-icon" href="icon-180.png?v=2026.11.18B-ui">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="房地合一">
@@ -784,6 +784,8 @@
     background: transparent;
     color: inherit;
   }
+  /* 自訂鍵盤未編輯時隱藏文字游標；保留焦點與 Tab 導覽。 */
+  input.ck-bind:not(.ck-active) { caret-color: transparent; }
   /* 自訂鍵盤欄位:未真正編輯時不套用 :focus 變灰/光暈(避免點外面或還原焦點閃一下) */
   .dash-input.ck-bind:focus:not(.ck-active) {
     box-shadow: none !important;
@@ -3656,7 +3658,7 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
 
   <div class="footer">
     本工具僅供試算參考,實際稅額以國稅局核定為準<br>
-    <span id="appVersion">房地合一 · 更新日 2026.11.18A</span>
+    <span id="appVersion">房地合一 · 更新日 2026.11.18B</span>
   </div>
 </div>
 </div><!-- /.app-shell -->
@@ -3763,9 +3765,9 @@ body.is-preview .agency-tax-trigger:focus-visible:not(.agency-tax-quiet-focus) >
   </div>
 </dialog>
 
-<script src="./storage.js?v=2026.11.18A-ui"></script>
-<script src="./precision.js?v=2026.11.18A-ui"></script>
-<script src="./view-state.js?v=2026.11.18A-ui"></script>
+<script src="./storage.js?v=2026.11.18B-ui"></script>
+<script src="./precision.js?v=2026.11.18B-ui"></script>
+<script src="./view-state.js?v=2026.11.18B-ui"></script>
 <script>
 /* Independent per-mode agency-tax preferences. */
 (function (global) {
